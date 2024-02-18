@@ -5,6 +5,7 @@ from click.testing import CliRunner
 from epomakercontroller import __main__
 from epomakercontroller.epomakercontroller import EpomakerController, IMAGE_DIMENSIONS
 from epomakercontroller.data.command_data import image_data_prefix
+from epomakercontroller.commands import EpomakerImageCommand
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -34,21 +35,13 @@ def assert_colour_close(original: tuple[int, int, int], decoded: tuple[int, int,
 def test_encode_decode_rgb565() -> None:
     """Test the _encode_rgb565 and _decode_rgb565 functions."""
     # Test data
-    red = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-    green = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
-    blue = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
+    rgb = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
     # Encode and decode
-    encoded_red = EpomakerController._encode_rgb565(*red)
-    decoded_red = EpomakerController._decode_rgb565(encoded_red)
-    encoded_green = EpomakerController._encode_rgb565(*green)
-    decoded_green = EpomakerController._decode_rgb565(encoded_green)
-    encoded_blue = EpomakerController._encode_rgb565(*blue)
-    decoded_blue = EpomakerController._decode_rgb565(encoded_blue)
+    encoded = EpomakerController._encode_rgb565(*rgb)
+    decoded = EpomakerController._decode_rgb565(encoded)
 
-    assert_colour_close(red, decoded_red)
-    assert_colour_close(green, decoded_green)
-    assert_colour_close(blue, decoded_blue)
+    assert_colour_close(rgb, decoded)
 
 
 def test_read_and_decode_bytes() -> None:
@@ -90,10 +83,10 @@ def test_read_and_decode_bytes() -> None:
     rgb_image = rgb_array_decoded.reshape((shape[0], shape[1], 3))
 
     # Display the RGB image
-    plt.imshow(rgb_image)
-    plt.axis('off')  # Hide the axes
-    plt.show()
-    # Assertions
+    # plt.imshow(rgb_image)
+    # plt.axis('off')  # Hide the axes
+    # plt.show()
+    # TODO: Assertions
     # assert isinstance(decoded_text, str)
     # assert len(decoded_text) > 0
     # assert decoded_text.startswith("Hello")
@@ -135,8 +128,49 @@ def test_encode_image() -> None:
             image_data[i*buffer_length:], buffer_length
             )
         file.write(f"{image_byte_segment}\n")
+    # TODO: Assertions
 
-def test_send_imagfe() -> None:
-    controller = EpomakerController()
-    controller.send_image("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration.png")
-    pass
+# def test_send_imagfe() -> None:
+#     controller = EpomakerController()
+#     controller.send_image("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration.png")
+#     pass
+
+def byte_wise_difference(bytes1: bytes, bytes2: bytes) -> list[int]:
+    # Ensure the bytes objects are of the same length
+    if len(bytes1) != len(bytes2):
+        raise ValueError("Bytes objects must be of the same length")
+
+    # Calculate the byte-wise difference
+    differences = [abs(b1 - b2) for b1, b2 in zip(bytes1, bytes2)]
+
+    return differences
+
+def test_encode_image_command() -> None:
+    command = EpomakerImageCommand()
+    command.encode_image("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration.png")
+    with open("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration-image-command.txt", "r") as file:
+        for i, p in enumerate(command):
+            test_bytes = bytes.fromhex(file.readline().strip())
+            difference = byte_wise_difference(p, test_bytes)
+
+            # Headers should always be equal
+            test_bytes[:command.packet_header_length] == p[:command.packet_header_length]
+
+            # Colours should be within an acceptable difference
+            byte_pairs = [p[i:i+2] for i in range(0, len(p), 2)]
+            byte_pairs_test = [test_bytes[i:i+2] for i in range(0, len(test_bytes), 2)]
+
+            # Iterate over byte pairs and assert the color difference
+            for pair, test_pair in zip(byte_pairs, byte_pairs_test):
+                # Convert byte pair to integer
+                colour = int.from_bytes(pair)
+                colour_test = int.from_bytes(test_pair)
+
+                # Assert the colour difference
+                assert_colour_close(
+                    EpomakerController._decode_rgb565(colour),
+                    EpomakerController._decode_rgb565(colour_test)
+                    )
+
+            assert np.all(np.array(difference) <= 8)
+
