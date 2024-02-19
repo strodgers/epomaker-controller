@@ -1,6 +1,5 @@
 import datetime
 import time
-from enum import Enum
 import hid
 from datetime import datetime
 
@@ -14,19 +13,6 @@ from .commands import (EpomakerCommand,
 VENDOR_ID = 0x3151
 PRODUCT_ID = 0x4010
 
-class EnumEpomakerCommands(Enum):
-    """Init commands for various functions of the RT100 keyboard.
-
-    Args:
-        Enum (TIME): Set the time on the keyboard.
-        Enum (TEMP): Set the temperature on the keyboard.
-        Enum (CPU): Set the CPU percentage on the keyboard.
-        Enum (IMAGE): Set the image on the keyboard.
-    """
-    TIME: Enum
-    TEMP: Enum
-    CPU: Enum
-    IMAGE: Enum
 
 class EpomakerController:
     """

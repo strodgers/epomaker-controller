@@ -1,12 +1,18 @@
 from typing import Iterator
+from datetime import datetime
+import dataclasses
 import numpy as np
 import cv2
-from datetime import datetime
-
-from .data.command_data import image_data_prefix
 
 IMAGE_DIMENSIONS = (162, 173)
-BUFF_LENGTH: int = 64
+BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
+
+@dataclasses.dataclass
+class PacketHeaderFormat:
+    prefix: bytearray
+    suffix: bytearray
+    suffix_final: bytearray
+
 
 class EpomakerCommand():
     """A command is basically just a wrapper around a numpy array of bytes.
@@ -21,14 +27,14 @@ class EpomakerCommand():
     def __init__(self, initialization_data: bytearray, packet_header_length: int = 0,
                  total_packets: int=1) -> None:
         self.command = np.zeros((total_packets, BUFF_LENGTH), dtype=np.uint8)
-        self.packet_header_length = packet_header_length
-        self.total_packets = total_packets
+        self.packet_header_length: int = packet_header_length
+        self.total_packets: int = total_packets
+        self.packet_header_format: PacketHeaderFormat | None = None # Must be defined in the subclass
         # If there are multiple packets, the command must be prepared before sending
-        self.packets_prepared = self.total_packets == 1
+        self.packets_prepared: bool = self.total_packets == 1
 
         # Set the first row of the command to the initialization data
         self.command[0, :len(initialization_data)] = initialization_data
-        pass
 
     @staticmethod
     def _np16_to_np8(data_16bit: np.ndarray[np.uint16]) -> np.ndarray[np.uint8]:
@@ -49,14 +55,41 @@ class EpomakerCommand():
             raise ValueError("Number of headers must match the number of packets.")
 
         header_data = np.array(packet_headers, dtype=np.uint8)
-        # header_data_u8 = self._np16_to_np8(header_data_u16)
 
         self.command[1:, :self.packet_header_length] = header_data
-        pass
 
     def __iter__(self) -> Iterator[bytes]:
         for packet in self.command:
             yield np.ndarray.tobytes(packet)
+
+    @staticmethod
+    def _calculate_checksum(buffer: bytes) -> bytes:
+        sum_bits = 0
+        for byte in buffer:
+            sum_bits += byte
+        if sum_bits == 0:
+            return bytes(0)
+        # Only use the lower 8 bits
+        checksum = 0xff - sum_bits.to_bytes(2)[1]
+        return checksum.to_bytes()
+
+    def _generate_header_data(self) -> Iterator[bytearray]:
+        if self.packet_header_format is None:
+            raise ValueError("Packet header format must be defined before generating header data.")
+
+        i = 0
+        prefix = self.packet_header_format.prefix
+        suffix = self.packet_header_format.suffix
+        while i < self.total_packets - 2:
+            data = prefix + bytearray.fromhex(f"{i:04x}")[::-1]  + suffix
+            checksum = self._calculate_checksum(data)
+            yield data + checksum
+            i += 1
+        
+        suffix = self.packet_header_format.suffix_final
+        data = prefix + bytearray.fromhex(f"{i:04x}")[::-1]  + suffix
+        checksum = self._calculate_checksum(data)
+        yield data + checksum
 
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
@@ -66,9 +99,15 @@ class EpomakerImageCommand(EpomakerCommand):
         total_packets = 1002
         super().__init__(initialization_data, packet_header_length, total_packets)
 
-        header_data = []
-        for item in image_data_prefix:
-            header_data.append(bytearray.fromhex(item))
+        self.packet_header_format = PacketHeaderFormat(
+            prefix=bytearray.fromhex("25000100"),
+            suffix=bytearray.fromhex("38"),
+            suffix_final=bytearray.fromhex("34")
+            )
+        header_data = [
+            data for data in self._generate_header_data()
+        ]
+
         super().insert_packet_headers(header_data)
         self.image_data = np.zeros(
             (total_packets - 1, BUFF_LENGTH - packet_header_length),
@@ -100,7 +139,7 @@ class EpomakerImageCommand(EpomakerCommand):
 
         return (r, g, b)
 
-    def encode_image(self, image_path: str, log_to_file: str = ".encode_image_bytes.log") -> None:
+    def encode_image(self, image_path: str) -> None:
         """
         Encode an image to 16-bit RGB565 according to IMAGE_DIMENSIONS and accounting for packet
         headers.
@@ -133,21 +172,23 @@ class EpomakerImageCommand(EpomakerCommand):
 
         self.packets_prepared = True
 
-    # TIME: str = "28000000000000d7"
-    # TEMP: str = "2a000000000000d5"
-    # CPU: str = "22000000000000dd63007f0004000800"
-    # IMAGE: str = "a5000100f4da008b0000a2ad"
 
-class EpomakerTimeCommand(EpomakerCommand):
+class EpomakerSimpleCommand(EpomakerCommand):
+    """A command for sending simple commands to the keyboard (no extra packets)."""
+    def __init__(self, command: bytearray) -> None:
+        packet_header_length = 0
+        total_packets = 1
+        super().__init__(command, packet_header_length, total_packets)
+
+
+class EpomakerTimeCommand(EpomakerSimpleCommand):
     """A command for setting the time on the keyboard."""
     def __init__(self, time: datetime) -> None:
         initialization_data = bytearray.fromhex(
             "28000000000000d7"
             + self._format_time(time)
             )
-        packet_header_length = 0
-        total_packets = 1
-        super().__init__(initialization_data, packet_header_length, total_packets)
+        super().__init__(initialization_data)
 
     @staticmethod
     def _format_time(time: datetime) -> str:
@@ -178,27 +219,23 @@ class EpomakerTimeCommand(EpomakerCommand):
 
         return command
 
-class EpomakerTempCommand(EpomakerCommand):
+class EpomakerTempCommand(EpomakerSimpleCommand):
     """A command for setting the temperature on the keyboard."""
     def __init__(self, temp: int) -> None:
         initialization_data = bytearray.fromhex(
             "2a000000000000d5"
             + f"{temp:02x}"
             )
-        packet_header_length = 0
-        total_packets = 1
-        super().__init__(initialization_data, packet_header_length, total_packets)
+        super().__init__(initialization_data)
 
-class EpomakerCpuCommand(EpomakerCommand):
+class EpomakerCpuCommand(EpomakerSimpleCommand):
     """A command for setting the CPU usage on the keyboard."""
     def __init__(self, cpu: int) -> None:
         initialization_data = bytearray.fromhex(
             "22000000000000dd63007f0004000800"
             + f"{cpu:02x}"
             )
-        packet_header_length = 0
-        total_packets = 1
-        super().__init__(initialization_data, packet_header_length, total_packets)
+        super().__init__(initialization_data)
 
 # test = EpomakerCommand(bytearray.fromhex("28000000000000d7"), packet_header_length=8, total_packets=1002)
 # header_data = []

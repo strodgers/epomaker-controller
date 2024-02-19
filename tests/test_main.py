@@ -3,9 +3,9 @@ import pytest
 from click.testing import CliRunner
 
 from epomakercontroller import __main__
-from epomakercontroller.epomakercontroller import EpomakerController, IMAGE_DIMENSIONS
+from epomakercontroller.epomakercontroller import EpomakerController
 from epomakercontroller.data.command_data import image_data_prefix
-from epomakercontroller.commands import EpomakerImageCommand
+from epomakercontroller.commands import EpomakerImageCommand, IMAGE_DIMENSIONS
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -24,12 +24,13 @@ def test_main_succeeds(runner: CliRunner) -> None:
     assert result.exit_code == 0
 
 
-def assert_colour_close(original: tuple[int, int, int], decoded: tuple[int, int, int], delta: int = 8) -> None:
+def assert_colour_close(original: tuple[int, int, int], decoded: tuple[int, int, int], delta: int = 8,
+                        debug_str: str = "") -> None:
     """Asserts that two colors are within an acceptable delta of each other.
     This is necessary because the RGB565 encoding and decoding process is lossy.
     """
     for o, d in zip(original, decoded):
-        assert abs(o - d) <= delta, f"Original: {original}, Decoded: {decoded}, Delta: {delta}"
+        assert abs(o - d) <= delta, f"{debug_str} Original: {original}, Decoded: {decoded}, Delta: {delta}"
 
 
 def test_encode_decode_rgb565() -> None:
@@ -38,8 +39,8 @@ def test_encode_decode_rgb565() -> None:
     rgb = (random.randint(0, 255), random.randint(0, 255), random.randint(0, 255))
 
     # Encode and decode
-    encoded = EpomakerController._encode_rgb565(*rgb)
-    decoded = EpomakerController._decode_rgb565(encoded)
+    encoded = EpomakerImageCommand._encode_rgb565(*rgb)
+    decoded = EpomakerImageCommand._decode_rgb565(encoded)
 
     assert_colour_close(rgb, decoded)
 
@@ -77,7 +78,7 @@ def test_read_and_decode_bytes() -> None:
     image_array_16bit = np.array(image_data, dtype=np.uint16).reshape(shape)
 
     rgb_array_decoded = np.array(
-        [EpomakerController._decode_rgb565(pixel) for pixel in image_array_16bit.ravel()],
+        [EpomakerImageCommand._decode_rgb565(pixel) for pixel in image_array_16bit.ravel()],
         dtype=np.uint8
         )
     rgb_image = rgb_array_decoded.reshape((shape[0], shape[1], 3))
@@ -105,7 +106,7 @@ def test_encode_image() -> None:
         for y in range(image.shape[0]):
             for x in range(image.shape[1]):
                 r, g, b = image[y, x]
-                image_16bit[y, x] = EpomakerController._encode_rgb565(r, g, b)
+                image_16bit[y, x] = EpomakerImageCommand._encode_rgb565(r, g, b)
     except Exception as e:
         print(f"Exception while converting image: {e}")
 
@@ -161,6 +162,7 @@ def test_encode_image_command() -> None:
             byte_pairs_test = [test_bytes[i:i+2] for i in range(0, len(test_bytes), 2)]
 
             # Iterate over byte pairs and assert the color difference
+            j = 0
             for pair, test_pair in zip(byte_pairs, byte_pairs_test):
                 # Convert byte pair to integer
                 colour = int.from_bytes(pair)
@@ -168,9 +170,50 @@ def test_encode_image_command() -> None:
 
                 # Assert the colour difference
                 assert_colour_close(
-                    EpomakerController._decode_rgb565(colour),
-                    EpomakerController._decode_rgb565(colour_test)
+                    EpomakerImageCommand._decode_rgb565(colour),
+                    EpomakerImageCommand._decode_rgb565(colour_test),
+                    debug_str=f"Packet {i}, Pair {j} "
                     )
+
+                j += 1
 
             assert np.all(np.array(difference) <= 8)
 
+
+def calculate_checksum(buffer: bytes, checkbit: int) -> bytes:
+    sum_bits = 0
+    for byte in buffer:
+        sum_bits += byte
+    if sum_bits == 0:
+        return bytes(0)
+    # Only use the lower 8 bits
+    checksum = 0xff - sum_bits.to_bytes(2)[1]
+    return checksum.to_bytes()
+
+
+def test_checksum() -> None:
+    checkbit = 8
+    commands = []
+    test_file = "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/cycle-light-modes-command.txt"
+    with open(test_file, "r", encoding="utf-8") as file:
+        commands = file.readlines()
+    for i, command in enumerate(commands):
+        buffer = bytes.fromhex(command.strip())
+        checksum = calculate_checksum(buffer[:checkbit], checkbit)
+        assert checksum == buffer[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(buffer[checkbit])}"
+
+    checkbit = 7
+    commands = []
+    test_files = [
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration-image-command.txt",
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/all-keys-to-100-5-69-command.txt",
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-A-blue-x4-red-x4-command.txt",
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-all-key-unique-rgb-command.txt"
+    ]
+    for test_file in test_files:
+        with open(test_file, "r", encoding="utf-8") as file:
+            commands = file.readlines()
+        for i, command in enumerate(commands):
+            buffer = bytes.fromhex(command.strip())
+            checksum = calculate_checksum(buffer[:checkbit], checkbit)
+            assert checksum == buffer[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(buffer[checkbit])}"
