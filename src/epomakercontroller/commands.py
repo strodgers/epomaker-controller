@@ -4,15 +4,16 @@ import dataclasses
 import numpy as np
 import cv2
 
+from .data.key_map import KeyboardKey
+
 IMAGE_DIMENSIONS = (162, 173)
 BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
 
 @dataclasses.dataclass
 class PacketHeaderFormat:
-    prefix: bytearray
-    suffix: bytearray
-    suffix_final: bytearray
-
+    format_string: str
+    format_string_final: str
+    has_checksum: bool = True
 
 class EpomakerCommand():
     """A command is basically just a wrapper around a numpy array of bytes.
@@ -29,7 +30,6 @@ class EpomakerCommand():
         self.command = np.zeros((total_packets, BUFF_LENGTH), dtype=np.uint8)
         self.packet_header_length: int = packet_header_length
         self.total_packets: int = total_packets
-        self.packet_header_format: PacketHeaderFormat | None = None # Must be defined in the subclass
         # If there are multiple packets, the command must be prepared before sending
         self.packets_prepared: bool = self.total_packets == 1
 
@@ -47,7 +47,7 @@ class EpomakerCommand():
 
         return data_8bit_flat.reshape(new_shape)
 
-    def insert_packet_headers(self, packet_headers: list[bytearray]) -> None:
+    def _insert_packet_headers(self, packet_headers: list[bytearray]) -> None:
         """Inserts headers for each packet in the command."""
         if self.packet_header_length == -1:
             raise ValueError("Header length must be set before inserting headers.")
@@ -56,11 +56,24 @@ class EpomakerCommand():
 
         header_data = np.array(packet_headers, dtype=np.uint8)
 
-        self.command[1:, :self.packet_header_length] = header_data
+        self._get_header_view()[:,:] = header_data
 
     def __iter__(self) -> Iterator[bytes]:
         for packet in self.command:
             yield np.ndarray.tobytes(packet)
+
+    def _get_data_view(self) -> np.ndarray[np.uint8]:
+        """ Returns a view of the data portion of the command."""
+        return self.command[1:, self.packet_header_length:]
+
+    def _get_header_view(self) -> np.ndarray[np.uint8]:
+        """ Returns a view of the header portion of the command."""
+        return self.command[1:, :self.packet_header_length]
+
+    def _get_instruction_view(self) -> np.ndarray[np.uint8]:
+        """ Returns a view of the instruction portion of the command."""
+        return self.command[:1,:]
+
 
     @staticmethod
     def _calculate_checksum(buffer: bytes) -> bytes:
@@ -73,23 +86,22 @@ class EpomakerCommand():
         checksum = 0xff - sum_bits.to_bytes(2)[1]
         return checksum.to_bytes()
 
-    def _generate_header_data(self) -> Iterator[bytearray]:
-        if self.packet_header_format is None:
+    def _generate_header_data(self, packet_header_format: PacketHeaderFormat, index_bytes:int = 4) -> Iterator[bytearray]:
+        if packet_header_format is None:
             raise ValueError("Packet header format must be defined before generating header data.")
 
+        def format_bytearray(index: int, format_string: str, has_checksum: bool) -> bytearray:
+            data = bytearray.fromhex(format_string.format(id_bytes=index.to_bytes(2)))
+            if has_checksum:
+                data += self._calculate_checksum(data)
+            return data
+
         i = 0
-        prefix = self.packet_header_format.prefix
-        suffix = self.packet_header_format.suffix
         while i < self.total_packets - 2:
-            data = prefix + bytearray.fromhex(f"{i:04x}")[::-1]  + suffix
-            checksum = self._calculate_checksum(data)
-            yield data + checksum
+            yield format_bytearray(i, packet_header_format.format_string, packet_header_format.has_checksum)
             i += 1
-        
-        suffix = self.packet_header_format.suffix_final
-        data = prefix + bytearray.fromhex(f"{i:04x}")[::-1]  + suffix
-        checksum = self._calculate_checksum(data)
-        yield data + checksum
+
+        yield format_bytearray(i, packet_header_format.format_string_final, packet_header_format.has_checksum)
 
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
@@ -99,16 +111,15 @@ class EpomakerImageCommand(EpomakerCommand):
         total_packets = 1002
         super().__init__(initialization_data, packet_header_length, total_packets)
 
-        self.packet_header_format = PacketHeaderFormat(
-            prefix=bytearray.fromhex("25000100"),
-            suffix=bytearray.fromhex("38"),
-            suffix_final=bytearray.fromhex("34")
+        packet_header_format = PacketHeaderFormat(
+            format_string="25000100{id_bytes[1]:02x}{id_bytes[0]:02x}38",
+            format_string_final="25000100{id_bytes[1]:02x}{id_bytes[0]:02x}34"
             )
         header_data = [
-            data for data in self._generate_header_data()
+            data for data in self._generate_header_data(packet_header_format)
         ]
 
-        super().insert_packet_headers(header_data)
+        super()._insert_packet_headers(header_data)
         self.image_data = np.zeros(
             (total_packets - 1, BUFF_LENGTH - packet_header_length),
             dtype=np.uint8
@@ -168,8 +179,7 @@ class EpomakerImageCommand(EpomakerCommand):
             (0, 4),
             "constant"
             ).reshape(((self.total_packets - 1, image_data_buff_length)))
-        self.command[1:, self.packet_header_length:] = image_data
-
+        self._get_data_view()[:,:] = image_data
         self.packets_prepared = True
 
 
@@ -237,8 +247,69 @@ class EpomakerCpuCommand(EpomakerSimpleCommand):
             )
         super().__init__(initialization_data)
 
+class EpomakerKeyRGBCommand(EpomakerCommand):
+    """Change a selection of keys to specific RGB values."""
+    def __init__(self, keys: list[KeyboardKey], rgb: tuple[int, int, int]) -> None:
+        packet_header_length = 8
+        total_packets = 8
+        super().__init__(bytearray.fromhex("18000000000000e7"), packet_header_length, total_packets)
+
+        packet_header_format = PacketHeaderFormat(
+            format_string="19{id_bytes[1]:02x}0001320000",
+            format_string_final="19{id_bytes[1]:02x}0001320000"
+            )
+        header_data = [
+            data for data in self._generate_header_data(packet_header_format, index_bytes=2)
+        ]
+
+        super()._insert_packet_headers(header_data)
+
+        for key in keys:
+            self._apply_keymask(key, rgb)
+
+    def _apply_keymask(self, key: KeyboardKey, rgb: tuple[int, int, int]) -> None:
+        index = key.value
+        current_packet_data = self._get_data_view()
+        for i in range(3):
+            data_index = np.unravel_index(
+                index*3 + i,
+                current_packet_data.shape
+                )
+            current_packet_data[data_index] = rgb[i]
+
+
+# class EpomakerProfileCommand(EpomakerSimpleCommand):
+#     """A command for setting the profile on the keyboard."""
+#     class ProfileMode(Enum):
+#         EPOMAKER_MODE_ALWAYS_ON                         = 0x01,
+#         EPOMAKER_MODE_DYNAMIC_BREATHING                 = 0x02,
+#         EPOMAKER_MODE_SPECTRUM_CYCLE                    = 0x03,
+#         EPOMAKER_MODE_DRIFT                             = 0x04,
+#         EPOMAKER_MODE_WAVES_RIPPLE                      = 0x05,
+#         EPOMAKER_MODE_STARS_TWINKLE                     = 0x06,
+#         EPOMAKER_MODE_STEADY_STREAM                     = 0x07,
+#         EPOMAKER_MODE_SHADOWING                         = 0x08,
+#         EPOMAKER_MODE_PEAKS_RISING_ONE_AFTER_ANOTHER    = 0x09,
+#         EPOMAKER_MODE_SINE_WAVE                         = 0x0a,
+#         EPOMAKER_MODE_CAISPRING_SURGING                 = 0x0b,
+#         EPOMAKER_MODE_FLOWERS_BLOOMING                  = 0x0c,
+#         EPOMAKER_MODE_LASER                             = 0x0e,
+#         EPOMAKER_MODE_PEAK_TURN                         = 0x0f,
+#         EPOMAKER_MODE_INCLINED_RAIN                     = 0x10,
+#         EPOMAKER_MODE_SNOW                              = 0x11,
+#         EPOMAKER_MODE_METEOR                            = 0x12,
+#         EPOMAKER_MODE_THROUGH_THE_SNOW_NON_TRACE        = 0x13,
+#         EPOMAKER_MODE_LIGHT_SHADOW                      = 0x15
+
+#     def __init__(self, mode: ProfileMode, ) -> None:
+#         initialization_data = bytearray.fromhex(
+#             "07"
+#             + f"{profile:02x}"
+#             )
+#         super().__init__(initialization_data
+
 # test = EpomakerCommand(bytearray.fromhex("28000000000000d7"), packet_header_length=8, total_packets=1002)
 # header_data = []
 # for item in image_data_prefix:
 #     header_data.append(bytearray.fromhex(item))
-# test.insert_packet_headers(header_data)
+# test._insert_packet_headers(header_data)

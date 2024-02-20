@@ -8,8 +8,10 @@ from .commands import (EpomakerCommand,
                        EpomakerTimeCommand,
                        EpomakerTempCommand,
                        EpomakerCpuCommand,
+                       EpomakerKeyRGBCommand,
                        BUFF_LENGTH
                        )
+from .data.key_map import KeyboardKey
 VENDOR_ID = 0x3151
 PRODUCT_ID = 0x4010
 
@@ -97,6 +99,10 @@ class EpomakerController:
         """
         cpu_command = EpomakerCpuCommand(cpu)
         self._send_command(cpu_command)
+
+    def send_key_rgb(self, key: KeyboardKey, rgb: tuple[int, int, int]) -> None:
+        rgb_command = EpomakerKeyRGBCommand([key], rgb)
+        self._send_command(rgb_command)
 
     def close_device(self) -> None:
         """

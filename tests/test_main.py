@@ -4,8 +4,17 @@ from click.testing import CliRunner
 
 from epomakercontroller import __main__
 from epomakercontroller.epomakercontroller import EpomakerController
-from epomakercontroller.data.command_data import image_data_prefix
-from epomakercontroller.commands import EpomakerImageCommand, IMAGE_DIMENSIONS
+from epomakercontroller.data.command_data import (
+    image_data_prefix
+)
+from epomakercontroller.data.key_map import (
+    KeyboardKey
+)
+from epomakercontroller.commands import (
+    EpomakerImageCommand,
+    EpomakerKeyRGBCommand,
+    IMAGE_DIMENSIONS
+)
 import random
 import numpy as np
 import matplotlib.pyplot as plt
@@ -94,42 +103,42 @@ def test_read_and_decode_bytes() -> None:
     # assert decoded_text.endswith("world!")
 
 
-def test_encode_image() -> None:
-    image_path = "tests/data/calibration.png"
-    image = cv2.imread(image_path)
-    image = cv2.resize(image, IMAGE_DIMENSIONS)
-    image = cv2.flip(image, 0)
-    image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+# def test_encode_image() -> None:
+#     image_path = "tests/data/calibration.png"
+#     image = cv2.imread(image_path)
+#     image = cv2.resize(image, IMAGE_DIMENSIONS)
+#     image = cv2.flip(image, 0)
+#     image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
 
-    image_16bit = np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype=np.uint16)
-    try:
-        for y in range(image.shape[0]):
-            for x in range(image.shape[1]):
-                r, g, b = image[y, x]
-                image_16bit[y, x] = EpomakerImageCommand._encode_rgb565(r, g, b)
-    except Exception as e:
-        print(f"Exception while converting image: {e}")
+#     image_16bit = np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype=np.uint16)
+#     try:
+#         for y in range(image.shape[0]):
+#             for x in range(image.shape[1]):
+#                 r, g, b = image[y, x]
+#                 image_16bit[y, x] = EpomakerImageCommand._encode_rgb565(r, g, b)
+#     except Exception as e:
+#         print(f"Exception while converting image: {e}")
 
-    image_data = ""
-    for row in image_16bit:
-        image_data += ''.join([hex(val)[2:].zfill(4) for val in row])
+#     image_data = ""
+#     for row in image_16bit:
+#         image_data += ''.join([hex(val)[2:].zfill(4) for val in row])
 
-    # 4 bytes per pixel (16 bits)
-    assert len(image_data) == (IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]) * 4
-    buffer_length = 128 - len(image_data_prefix[0])
-    with open("image_data.txt", "w", encoding="utf-8") as file:
-        chunks = math.floor(len(image_data) / buffer_length)
-        i = 0
-        while i < chunks:
-            image_byte_segment = image_data[i*buffer_length:(i+1)*buffer_length]
-            file.write(f"{image_byte_segment}\n")
-            i += 1
-        # Remainder of the data
-        image_byte_segment = EpomakerController._pad_command(
-            image_data[i*buffer_length:], buffer_length
-            )
-        file.write(f"{image_byte_segment}\n")
-    # TODO: Assertions
+#     # 4 bytes per pixel (16 bits)
+#     assert len(image_data) == (IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]) * 4
+#     buffer_length = 128 - len(image_data_prefix[0])
+#     with open("image_data.txt", "w", encoding="utf-8") as file:
+#         chunks = math.floor(len(image_data) / buffer_length)
+#         i = 0
+#         while i < chunks:
+#             image_byte_segment = image_data[i*buffer_length:(i+1)*buffer_length]
+#             file.write(f"{image_byte_segment}\n")
+#             i += 1
+#         # Remainder of the data
+#         image_byte_segment = EpomakerController._pad_command(
+#             image_data[i*buffer_length:], buffer_length
+#             )
+#         file.write(f"{image_byte_segment}\n")
+#     # TODO: Assertions
 
 # def test_send_imagfe() -> None:
 #     controller = EpomakerController()
@@ -155,7 +164,7 @@ def test_encode_image_command() -> None:
             difference = byte_wise_difference(p, test_bytes)
 
             # Headers should always be equal
-            test_bytes[:command.packet_header_length] == p[:command.packet_header_length]
+            assert test_bytes[:command.packet_header_length] == p[:command.packet_header_length]
 
             # Colours should be within an acceptable difference
             byte_pairs = [p[i:i+2] for i in range(0, len(p), 2)]
@@ -169,11 +178,12 @@ def test_encode_image_command() -> None:
                 colour_test = int.from_bytes(test_pair)
 
                 # Assert the colour difference
-                assert_colour_close(
-                    EpomakerImageCommand._decode_rgb565(colour),
-                    EpomakerImageCommand._decode_rgb565(colour_test),
-                    debug_str=f"Packet {i}, Pair {j} "
-                    )
+                if colour != colour_test:
+                    assert_colour_close(
+                        EpomakerImageCommand._decode_rgb565(colour),
+                        EpomakerImageCommand._decode_rgb565(colour_test),
+                        debug_str=f"Packet {i}, Pair {j} "
+                        )
 
                 j += 1
 
@@ -217,3 +227,34 @@ def test_checksum() -> None:
             buffer = bytes.fromhex(command.strip())
             checksum = calculate_checksum(buffer[:checkbit], checkbit)
             assert checksum == buffer[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(buffer[checkbit])}"
+
+def test_set_rgb() -> None:
+    command = EpomakerKeyRGBCommand(
+        [KeyboardKey.A],
+        (255, 0, 0)
+    )
+    test_files = [
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-a-red.txt"
+    ]
+    test_commands = []
+    for test_file in test_files:
+        with open(test_file, "r", encoding="utf-8") as file:
+            test_commands = file.readlines()
+        for i, p in enumerate(command):
+            assert p == bytes.fromhex(test_commands[i].strip())
+
+    all_keys = [KeyboardKey[e.name] for e in KeyboardKey]
+    command = EpomakerKeyRGBCommand(
+        all_keys,
+        (100, 5, 69)
+    )
+    test_files = [
+        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/all-keys-to-100-5-69-command.txt"
+    ]
+    test_commands = []
+    for test_file in test_files:
+        with open(test_file, "r", encoding="utf-8") as file:
+            test_commands = file.readlines()
+        for i, p in enumerate(command):
+            for b in range(len(p)):
+                assert p[b] == bytes.fromhex(test_commands[i].strip())[b]
