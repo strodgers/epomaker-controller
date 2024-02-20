@@ -1,16 +1,14 @@
 """Test cases for the __main__ module."""
 import pytest
 from click.testing import CliRunner
-
+from typing import Iterator
 from epomakercontroller import __main__
 from epomakercontroller.epomakercontroller import EpomakerController
-from epomakercontroller.data.command_data import (
-    image_data_prefix
-)
 from epomakercontroller.data.key_map import (
     KeyboardKey
 )
 from epomakercontroller.commands import (
+    EpomakerCommand,
     EpomakerImageCommand,
     EpomakerKeyRGBCommand,
     IMAGE_DIMENSIONS
@@ -19,7 +17,9 @@ import random
 import numpy as np
 import matplotlib.pyplot as plt
 import cv2
-import math
+
+# Set to True to display images
+DISPLAY = True
 
 @pytest.fixture
 def runner() -> CliRunner:
@@ -32,6 +32,38 @@ def test_main_succeeds(runner: CliRunner) -> None:
     result = runner.invoke(__main__.main)
     assert result.exit_code == 0
 
+class test_data:
+    """Test data for the EpomakerController."""
+    def __init__(self, test_name: str,) -> None:
+        self.name = test_name
+        test_file = f"tests/data/{test_name}.txt"
+        self.command_data = []
+        with open(test_file, "r") as file:
+            # Ignore the first line
+            file.readline()
+            try:
+                self.command_data = [bytes.fromhex(line.strip()) for line in file.readlines()]
+            except ValueError as e:
+                print(f"Error reading test data {test_file}: {e}")
+                raise e
+        assert len(self.command_data) > 0
+
+    def __iter__(self) -> Iterator[bytes]:
+        for data in self.command_data:
+            yield data
+
+all_tests = [
+    "EpomakerImageCommand-upload-calibration-image",
+    "EpomakerImageCommand-upload-red-image",
+    "EpomakerKeyRGBCommand-all-keys-set",
+    "EpomakerKeyRGBCommand-all-keys-unique",
+    "EpomakerKeyRGBCommand-multiple-keys",
+    "EpomakerKeyRGBCommand-single-key",
+    "EpomakerCommand-cycle-light-modes-command",
+    "_decode_rgb565-calibration-image-bytes",
+]
+
+all_test_data = {test: test_data(test) for test in all_tests}
 
 def assert_colour_close(original: tuple[int, int, int], decoded: tuple[int, int, int], delta: int = 8,
                         debug_str: str = "") -> None:
@@ -40,6 +72,12 @@ def assert_colour_close(original: tuple[int, int, int], decoded: tuple[int, int,
     """
     for o, d in zip(original, decoded):
         assert abs(o - d) <= delta, f"{debug_str} Original: {original}, Decoded: {decoded}, Delta: {delta}"
+
+
+def pair_bytes(data: bytes) -> list[bytes]:
+    """ Combine bytes into 2 bytes"""
+    assert len(data) % 2 == 0, "Data must be of even length"
+    return [data[i:i+2] for i in range(0, len(data), 2)]
 
 
 def test_encode_decode_rgb565() -> None:
@@ -56,51 +94,50 @@ def test_encode_decode_rgb565() -> None:
 
 def test_read_and_decode_bytes() -> None:
     """Test reading bytes from a text file and decoding them."""
-    # Test data
-    # file_path = "tests/data/upload-calibration-image-bytes.txt"
-    file_path = "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/image_data.txt"
+    this_test_data = all_test_data["_decode_rgb565-calibration-image-bytes"]
+    pixel_pairs = []
+    for pair in [pair_bytes(data) for data in this_test_data]:
+        pixel_pairs+= pair
 
-    # Read bytes from file
-    with open(file_path, "r") as file:
-        hex_data_full = file.readlines()
-
-    # Parse the hex data assuming a 2-byte color encoding (16 bits per pixel)
+    # Decode the pixel pairs
     pixels = []
-    for line in hex_data_full:
-        # Each pair of values now represents one pixel
-        if ":" in line:
-            pixel_values = line.strip().split(':')
-        else:
-            pixel_values = [line[i:i+2] for i in range(0, len(line), 2)]
-        for i in range(0, len(pixel_values), 2):
-            try:
-                # Convert every 2 values into a single integer representing a pixel
-                pixel = int("".join(pixel_values[i:i+2]), 16)
-                pixels.append(pixel)
-            except ValueError:
-                # In case of incomplete values, we break the loop
-                break
+    for pixel in pixel_pairs:
+        pixels+= list(EpomakerImageCommand._decode_rgb565(int.from_bytes(pixel)))
 
-    shape = IMAGE_DIMENSIONS
-    num_pixels = shape[0] * shape[1]
-    image_data = pixels[:num_pixels]  # Ensure we only take the number of pixels we need
-    image_array_16bit = np.array(image_data, dtype=np.uint16).reshape(shape)
+    # Remove padding bytes from the end of the image
+    pixels = pixels[:IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1] * 3]
 
-    rgb_array_decoded = np.array(
-        [EpomakerImageCommand._decode_rgb565(pixel) for pixel in image_array_16bit.ravel()],
-        dtype=np.uint8
-        )
-    rgb_image = rgb_array_decoded.reshape((shape[0], shape[1], 3))
+    # Convert the pixel data to an 8-bit image
+    test_image_8bit = np.array(pixels, dtype=np.uint8).reshape((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1], 3))
 
-    # Display the RGB image
-    # plt.imshow(rgb_image)
-    # plt.axis('off')  # Hide the axes
-    # plt.show()
-    # TODO: Assertions
-    # assert isinstance(decoded_text, str)
-    # assert len(decoded_text) > 0
-    # assert decoded_text.startswith("Hello")
-    # assert decoded_text.endswith("world!")
+    # Check similarity
+    image_path = "tests/data/calibration.png"
+    image = cv2.imread(image_path)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    image = cv2.resize(image, IMAGE_DIMENSIONS)
+    image = cv2.flip(image, 0)
+    image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
+
+    similarity = cv2.matchTemplate(image, test_image_8bit, cv2.TM_CCOEFF_NORMED)
+    min_val, *_ = cv2.minMaxLoc(similarity)
+
+    assert min_val > 0.99
+
+    # Display the images
+    if DISPLAY:
+        plt.subplot(1, 2, 1)
+        plt.imshow(image)
+        plt.title("Original Image")
+        plt.axis('off')  # Hide the axes
+
+        plt.subplot(1, 2, 2)
+        plt.imshow(test_image_8bit)
+        plt.title("Test Image")
+        plt.axis('off')  # Hide the axes
+
+        plt.show()
+    pass
+
 
 
 # def test_encode_image() -> None:
@@ -155,106 +192,73 @@ def byte_wise_difference(bytes1: bytes, bytes2: bytes) -> list[int]:
 
     return differences
 
+
 def test_encode_image_command() -> None:
     command = EpomakerImageCommand()
-    command.encode_image("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration.png")
-    with open("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration-image-command.txt", "r") as file:
-        for i, p in enumerate(command):
-            test_bytes = bytes.fromhex(file.readline().strip())
-            difference = byte_wise_difference(p, test_bytes)
+    this_test_data = all_test_data["EpomakerImageCommand-upload-calibration-image"]
+    command.encode_image("tests/data/calibration.png")
 
-            # Headers should always be equal
-            assert test_bytes[:command.packet_header_length] == p[:command.packet_header_length]
+    i = 0
+    for t, d in zip(this_test_data, command):
+        difference = byte_wise_difference(t, d)
 
-            # Colours should be within an acceptable difference
-            byte_pairs = [p[i:i+2] for i in range(0, len(p), 2)]
-            byte_pairs_test = [test_bytes[i:i+2] for i in range(0, len(test_bytes), 2)]
+        # Headers should always be equal
+        assert t[:command.packet_header_length] == d[:command.packet_header_length]
 
-            # Iterate over byte pairs and assert the color difference
-            j = 0
-            for pair, test_pair in zip(byte_pairs, byte_pairs_test):
-                # Convert byte pair to integer
-                colour = int.from_bytes(pair)
-                colour_test = int.from_bytes(test_pair)
+        # Iterate over byte pairs and assert the color difference
+        j = 0
+        for d_colour, t_colour in zip(pair_bytes(d), pair_bytes(t)):
+            # Convert byte pair to integer
+            # Assert the colour difference
+            if d_colour != t_colour:
+                assert_colour_close(
+                    EpomakerImageCommand._decode_rgb565(int(d_colour, 16)),
+                    EpomakerImageCommand._decode_rgb565(int(t_colour,16)),
+                    debug_str=f"Packet {i}, Pair {j} "
+                    )
 
-                # Assert the colour difference
-                if colour != colour_test:
-                    assert_colour_close(
-                        EpomakerImageCommand._decode_rgb565(colour),
-                        EpomakerImageCommand._decode_rgb565(colour_test),
-                        debug_str=f"Packet {i}, Pair {j} "
-                        )
+            j += 1
 
-                j += 1
-
-            assert np.all(np.array(difference) <= 8)
-
-
-def calculate_checksum(buffer: bytes, checkbit: int) -> bytes:
-    sum_bits = 0
-    for byte in buffer:
-        sum_bits += byte
-    if sum_bits == 0:
-        return bytes(0)
-    # Only use the lower 8 bits
-    checksum = 0xff - sum_bits.to_bytes(2)[1]
-    return checksum.to_bytes()
+        assert np.all(np.array(difference) <= 8)
+        i += 1
 
 
 def test_checksum() -> None:
+    # Some commands use the 8th bit as the checksum
+    this_test_data = all_test_data["EpomakerCommand-cycle-light-modes-command"]
     checkbit = 8
-    commands = []
-    test_file = "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/cycle-light-modes-command.txt"
-    with open(test_file, "r", encoding="utf-8") as file:
-        commands = file.readlines()
-    for i, command in enumerate(commands):
-        buffer = bytes.fromhex(command.strip())
-        checksum = calculate_checksum(buffer[:checkbit], checkbit)
-        assert checksum == buffer[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(buffer[checkbit])}"
+    for i, t in enumerate(this_test_data):
+        checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
+        assert checksum == t[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
 
+    # Some commands use the 7th bit as the checksum
     checkbit = 7
-    commands = []
-    test_files = [
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration-image-command.txt",
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/all-keys-to-100-5-69-command.txt",
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-A-blue-x4-red-x4-command.txt",
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-all-key-unique-rgb-command.txt"
-    ]
-    for test_file in test_files:
-        with open(test_file, "r", encoding="utf-8") as file:
-            commands = file.readlines()
-        for i, command in enumerate(commands):
-            buffer = bytes.fromhex(command.strip())
-            checksum = calculate_checksum(buffer[:checkbit], checkbit)
-            assert checksum == buffer[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(buffer[checkbit])}"
+    for this_test_data in [
+        all_test_data["EpomakerImageCommand-upload-calibration-image"],
+        all_test_data["EpomakerKeyRGBCommand-all-keys-set"],
+        all_test_data["EpomakerKeyRGBCommand-all-keys-unique"],
+        all_test_data["EpomakerKeyRGBCommand-single-key"]
+        ]:
+          for i, t in enumerate(this_test_data):
+                checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
+                assert checksum == t[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
+
 
 def test_set_rgb() -> None:
+    this_test_data = all_test_data["EpomakerKeyRGBCommand-single-key"]
     command = EpomakerKeyRGBCommand(
         [KeyboardKey.A],
         (255, 0, 0)
     )
-    test_files = [
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/change-a-red.txt"
-    ]
-    test_commands = []
-    for test_file in test_files:
-        with open(test_file, "r", encoding="utf-8") as file:
-            test_commands = file.readlines()
-        for i, p in enumerate(command):
-            assert p == bytes.fromhex(test_commands[i].strip())
 
-    all_keys = [KeyboardKey[e.name] for e in KeyboardKey]
+    for t, d in zip(this_test_data, command):
+        assert t == d
+
+    this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
     command = EpomakerKeyRGBCommand(
-        all_keys,
+        [KeyboardKey[e.name] for e in KeyboardKey],
         (100, 5, 69)
     )
-    test_files = [
-        "/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/all-keys-to-100-5-69-command.txt"
-    ]
-    test_commands = []
-    for test_file in test_files:
-        with open(test_file, "r", encoding="utf-8") as file:
-            test_commands = file.readlines()
-        for i, p in enumerate(command):
-            for b in range(len(p)):
-                assert p[b] == bytes.fromhex(test_commands[i].strip())[b]
+
+    for t, d in zip(this_test_data, command):
+        assert t == d

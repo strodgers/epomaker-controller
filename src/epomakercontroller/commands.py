@@ -77,14 +77,9 @@ class EpomakerCommand():
 
     @staticmethod
     def _calculate_checksum(buffer: bytes) -> bytes:
-        sum_bits = 0
-        for byte in buffer:
-            sum_bits += byte
-        if sum_bits == 0:
-            return bytes(0)
-        # Only use the lower 8 bits
-        checksum = 0xff - sum_bits.to_bytes(2)[1]
-        return checksum.to_bytes()
+        sum_bits = sum(buffer) & 0xFF
+        checksum = (0xFF - sum_bits) & 0xFF
+        return bytes([checksum])
 
     def _generate_header_data(self, packet_header_format: PacketHeaderFormat, index_bytes:int = 4) -> Iterator[bytearray]:
         if packet_header_format is None:
