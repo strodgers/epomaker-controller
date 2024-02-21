@@ -86,7 +86,7 @@ class EpomakerCommand():
             raise ValueError("Packet header format must be defined before generating header data.")
 
         def format_bytearray(index: int, format_string: str, has_checksum: bool) -> bytearray:
-            data = bytearray.fromhex(format_string.format(id_bytes=index.to_bytes(2)))
+            data = bytearray.fromhex(format_string.format(id_bytes=index.to_bytes(2, "big")))
             if has_checksum:
                 data += self._calculate_checksum(data)
             return data

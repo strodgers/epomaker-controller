@@ -102,7 +102,7 @@ def test_read_and_decode_bytes() -> None:
     # Decode the pixel pairs
     pixels = []
     for pixel in pixel_pairs:
-        pixels+= list(EpomakerImageCommand._decode_rgb565(int.from_bytes(pixel)))
+        pixels+= list(EpomakerImageCommand._decode_rgb565(int.from_bytes(pixel, byteorder="big")))
 
     # Remove padding bytes from the end of the image
     pixels = pixels[:IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1] * 3]
@@ -229,7 +229,7 @@ def test_checksum() -> None:
     checkbit = 8
     for i, t in enumerate(this_test_data):
         checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
-        assert checksum == t[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
+        assert checksum == t[checkbit].to_bytes(1, byteorder="big"), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
 
     # Some commands use the 7th bit as the checksum
     checkbit = 7
@@ -241,7 +241,7 @@ def test_checksum() -> None:
         ]:
           for i, t in enumerate(this_test_data):
                 checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
-                assert checksum == t[checkbit].to_bytes(), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
+                assert checksum == t[checkbit].to_bytes(1, byteorder="big"), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
 
 
 def test_set_rgb() -> None:
