@@ -62,7 +62,7 @@ class EpomakerController:
         """
         Sends a command to the HID device.
         """
-        assert command.packets_prepared
+        assert command.report_data_prepared
         for packet in command:
             assert len(packet) == BUFF_LENGTH
             if self.dry_run:

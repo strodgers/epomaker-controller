@@ -9,10 +9,70 @@ from .data.key_map import KeyboardKey, KeyboardRGBFrame, KeyMap
 IMAGE_DIMENSIONS = (162, 173)
 BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
 
-@dataclasses.dataclass
-class PacketHeaderFormat:
-    format_string: str
-    has_checksum: bool = True
+@dataclasses.dataclass()
+class Report:
+    """Represents the data that is sent to the keyboard."""
+    header_format_string: str
+    checksum_index: int | None
+    index: int
+    header_format_values: dict[str, bytes] = dataclasses.field(default_factory=dict)
+    def __post_init__(self) -> None:
+        self.report_bytearray = bytearray.fromhex(
+            self.header_format_string.format(**self.header_format_values)
+            )
+        if self.checksum_index is not None:
+            self.report_bytearray += self._calculate_checksum(self._get_header())
+        assert len(self.report_bytearray) <= BUFF_LENGTH, (
+            f"Report length {len(self.report_bytearray)} exceeds the maximum length of "
+            f"{BUFF_LENGTH}."
+            )
+        self.header_length = len(self.report_bytearray)
+
+    def pad(self) -> None:
+        """Pads the report header with zeros to the maximum length."""
+        assert self.report_bytearray is not None, "Report bytearray must be set before padding."
+        self.report_bytearray += bytes(BUFF_LENGTH - len(self.report_bytearray))
+
+    @staticmethod
+    def _calculate_checksum(buffer: bytes) -> bytes:
+        sum_bits = sum(buffer) & 0xFF
+        checksum = (0xFF - sum_bits) & 0xFF
+        return bytes([checksum])
+
+    def _get_checksum(self) -> bytes:
+        assert self.report_bytearray is not None, "Report bytearray must be set before getting."
+        assert self.checksum_index is not None, "Checksum index must be set before getting."
+        return self[self.checksum_index]
+
+    def _get_header(self) -> bytes:
+        return self[:self.header_length]
+
+    def __getitem__(self, key: int | slice) -> bytes:
+        assert self.report_bytearray is not None, "Report bytearray must be set before getting."
+        return bytes(self.report_bytearray[key])
+
+class ReportWithData(Report):
+    def __post_init__(self) -> None:
+        self.prepared: bool = False
+
+    def add_data(self, data: bytes) -> None:
+        assert self.prepared is False, "Report data has already been set."
+        self.report_data = bytearray(data)
+        self.prepared = True
+
+    def __getitem__(self, key: int | slice) -> bytes:
+        assert self.report_bytearray is not None, "Report bytearray must be set before getting."
+        assert self.report_data is not None, "Report data must be set before getting."
+        return bytes((self.report_bytearray + self.report_data)[key])
+
+@dataclasses.dataclass(frozen=True)
+class CommandStructure:
+    number_of_starter_reports: int = 1
+    number_of_data_reports: int = 0
+    number_of_footer_reports: int = 0
+
+    def __len__(self) -> int:
+        return self.number_of_starter_reports + self.number_of_data_reports + self.number_of_footer_reports
 
 class EpomakerCommand():
     """A command is basically just a wrapper around a numpy array of bytes.
@@ -24,16 +84,25 @@ class EpomakerCommand():
     packets to be sent (eg image, key colours). Each row of extra packets must also have an
     associated header according to the commannd type.
     """
-    def __init__(self, initialization_data: bytearray, packet_header_length: int = 0,
-                 total_packets: int=1) -> None:
-        self.command = np.zeros((total_packets, BUFF_LENGTH), dtype=np.uint8)
-        self.packet_header_length: int = packet_header_length
-        self.total_packets: int = total_packets
-        # If there are multiple packets, the command must be prepared before sending
-        self.packets_prepared: bool = self.total_packets == 1
+    def __init__(self,  initial_report: Report,
+                 structure: CommandStructure = CommandStructure(),
+                ) -> None:
+        self.reports: list[Report] = []
+        self.structure: CommandStructure = structure
+        # If there are data reports, the command must be prepared before sending
+        self.report_data_prepared: bool = structure.number_of_data_reports == 0
+        self.report_footer_prepared: bool = structure.number_of_footer_reports == 0
+        self._insert_report(initial_report)
 
-        # Set the first row of the command to the initialization data
-        self.command[0, :len(initialization_data)] = initialization_data
+    def _insert_report(self, report: Report) -> None:
+        assert report.index < len(self.structure), (
+            f"Report index {report.index} exceeds the number of reports "
+            f"{len(self.structure)}."
+            )
+        assert report.index not in [r.index for r in self.reports], (
+            f"Report index {report.index} already exists."
+            )
+        self.reports.append(report)
 
     @staticmethod
     def _np16_to_np8(data_16bit: np.ndarray[np.uint16]) -> np.ndarray[np.uint8]:
@@ -46,119 +115,29 @@ class EpomakerCommand():
 
         return data_8bit_flat.reshape(new_shape)
 
-    def _insert_packet_headers(self, packet_headers: list[bytearray]) -> None:
-        """Inserts headers for each packet in the command."""
-        if self.packet_header_length == -1:
-            raise ValueError("Header length must be set before inserting headers.")
-        if self.total_packets - 1 != len(packet_headers):
-            raise ValueError("Number of headers must match the number of packets.")
+    def __iter__(self) -> Iterator[Report]:
+        yield from self
 
-        header_data = np.array(packet_headers, dtype=np.uint8)
-
-        self._get_header_view()[:,:] = header_data
-
-    def __iter__(self) -> Iterator[bytes]:
-        for packet in self.command:
-            yield np.ndarray.tobytes(packet)
-
-    def _get_data_view(self, subset: tuple[int, int] = (-1, -1)) -> np.ndarray[np.uint8]:
-        """ Returns a view of the data portion of the command."""
-        data_view = self.command[1:, self.packet_header_length:]
-        if subset != (-1, -1):
-            return data_view[subset[0]:subset[1], :]
-        return data_view
-
-    def _get_header_view(self) -> np.ndarray[np.uint8]:
-        """ Returns a view of the header portion of the command."""
-        return self.command[1:, :self.packet_header_length]
-
-    def _get_instruction_view(self) -> np.ndarray[np.uint8]:
-        """ Returns a view of the instruction portion of the command."""
-        return self.command[:1,:]
-
-
-    @staticmethod
-    def _calculate_checksum(buffer: bytes) -> bytes:
-        sum_bits = sum(buffer) & 0xFF
-        checksum = (0xFF - sum_bits) & 0xFF
-        return bytes([checksum])
-
-    def _generate_header_data(self, packet_header_format: PacketHeaderFormat, count_range: range,
-                              format_args: dict[str, int] = {}) -> Iterator[bytearray]:
-        if packet_header_format is None:
-            raise ValueError("Packet header must be defined before generating header data.")
-
-        for packet_index in count_range:
-            formatted_string = packet_header_format.format_string.format(
-                **format_args,
-                packet_index_bytes=packet_index.to_bytes(2, "big")
-                )
-            data = bytearray.fromhex(formatted_string)
-            if packet_header_format.has_checksum:
-                data += self._calculate_checksum(data)
-
-            yield data
-
-        # def format_bytearray(index: int, format_string: str, has_checksum: bool) -> bytearray:
-        #     ret = bytearray.fromhex(format_string.format(
-        #         id_bytes=index.to_bytes(2, "big")
-        #         ))
-        #     if has_checksum:
-        #         ret += self._calculate_checksum(ret)
-        #     return ret
-
-        # i = 0
-        # while i < self.total_packets - 2:
-        #     yield format_bytearray(i,
-        #                            packet_header_format.format_string,
-        #                            packet_header_format.has_checksum,
-        #                            )
-        #     i += 1
-
-        # yield format_bytearray(i,
-        #                        packet_header_format.format_string_final,
-        #                        packet_header_format.has_checksum,
-        #                        )
+    def __getitem__(self, key: int) -> Report:
+        report = next((r for r in self.reports if r.index == key), None)
+        assert report is not None, f"Report {key} not found."
+        return report
 
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
     def __init__(self) -> None:
-        initialization_data = bytearray.fromhex("a5000100f4da008b0000a2ad")
-        packet_header_length = 8
-        total_packets = 1002
-        super().__init__(initialization_data, packet_header_length, total_packets)
+        initialization_data = "a5000100f4da008b0000a2ad"
+        self.report_data_header_length = 8
+        structure = CommandStructure(
+            number_of_starter_reports=1,
+            number_of_data_reports=1000,
+            number_of_footer_reports=1
+            )
+        initial_report = Report(initialization_data, index=0, checksum_index=None)
+        super().__init__(initial_report, structure)
 
-        header_data = []
-        packet_header_format = PacketHeaderFormat(
-            format_string="25000100{packet_index_bytes[1]:02x}{packet_index_bytes[0]:02x}38",
-            )
-        header_data += [
-            *self._generate_header_data(
-                packet_header_format,
-                range(0, total_packets-2),
-            )
-        ]
-
-        # End is different
-        packet_header_format = PacketHeaderFormat(
-            format_string="25000100{packet_index_bytes[1]:02x}{packet_index_bytes[0]:02x}34"
-            )
-        header_data += [
-            *self._generate_header_data(
-                packet_header_format,
-                range(total_packets-2, total_packets-1),
-            )
-        ]
-
-        # header_data = [
-        #     data for data in self._generate_header_data(packet_header_format)
-        # ]
-
-        super()._insert_packet_headers(header_data)
-        self.image_data = np.zeros(
-            (total_packets - 1, BUFF_LENGTH - packet_header_length),
-            dtype=np.uint8
-            )
+    def get_data_reports(self) -> list[ReportWithData]:
+        return [r for r in self.reports if isinstance(r, ReportWithData)]
 
     @staticmethod
     def _encode_rgb565(r: int, g: int, b: int) -> int:
@@ -207,33 +186,130 @@ class EpomakerImageCommand(EpomakerCommand):
         except Exception as e:
             print(f"Exception while converting image: {e}")
 
-        image_8bit = self._np16_to_np8(image_16bit)
-        image_data_buff_length = BUFF_LENGTH - self.packet_header_length
-        image_data = np.pad(
-            image_8bit.flatten(),
-            (0, 4),
-            "constant"
-            ).reshape(((self.total_packets - 1, image_data_buff_length)))
-        self._get_data_view()[:,:] = image_data
-        self.packets_prepared = True
+        image_8bit_flattened = np.ndarray.flatten(self._np16_to_np8(image_16bit))
+        data_buff_length = BUFF_LENGTH - self.report_data_header_length
+        data_buff_pointer = 0
+        for report_index in range(0, self.structure.number_of_data_reports):
+            report = ReportWithData(
+                header_format_string="25000100{report_index_bytes[1]:02x}{report_index_bytes[0]:02x}38",
+                index=report_index + self.structure.number_of_starter_reports,
+                header_format_values={"report_index_bytes": (report_index).to_bytes(2, byteorder="big")},
+                checksum_index=7
+            )
+            report.add_data(image_8bit_flattened[
+                data_buff_pointer:data_buff_pointer + data_buff_length
+                ].tobytes())
+            data_buff_pointer += data_buff_length
+            self._insert_report(report)
 
+        assert len(self.get_data_reports()) == self.structure.number_of_data_reports, (
+            f"Expected {self.structure.number_of_data_reports} reports, got "
+            f"{len(self.get_data_reports())}."
+            )
 
-class EpomakerSimpleCommand(EpomakerCommand):
-    """A command for sending simple commands to the keyboard (no extra packets)."""
-    def __init__(self, command: bytearray) -> None:
-        packet_header_length = 0
-        total_packets = 1
-        super().__init__(command, packet_header_length, total_packets)
+        self.report_data_prepared = True
 
+        # Add the footer report
+        footer_report = ReportWithData(
+            header_format_string="25000100{report_index_bytes[1]:02x}{report_index_bytes[0]:02x}34",
+            index=self.structure.number_of_starter_reports + self.structure.number_of_data_reports,
+            header_format_values={"report_index_bytes": (self.structure.number_of_data_reports).to_bytes(2, byteorder="big")},
+            checksum_index=7
+            )
+        footer_report.add_data(image_8bit_flattened[
+            data_buff_pointer:data_buff_pointer + data_buff_length
+            ].tobytes())
+        # Need some padding at the end of the image data
+        footer_report.pad()
+        self._insert_report(footer_report)
 
-class EpomakerTimeCommand(EpomakerSimpleCommand):
+        self.report_footer_prepared = True
+
+        assert len(self.reports) == len(self.structure), (
+            f"Expected {len(self.structure)} reports, got {len(self.reports)}."
+            )
+
+class EpomakerKeyRGBCommand(EpomakerCommand):
+    """Change a selection of keys to specific RGB values."""
+    def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
+        initialization_data = "18000000000000e7"
+        self.report_data_header_length = 8
+        structure = CommandStructure(
+            number_of_starter_reports=1,
+            number_of_data_reports=len(frames),
+            number_of_footer_reports=0
+            )
+        initial_report = Report(
+            initialization_data,
+            index=0,
+            checksum_index=None)
+        super().__init__(initial_report, structure)
+
+        report_index = 1
+        data_buffer_length = BUFF_LENGTH - self.report_data_header_length
+        data_reports_per_frame = 7
+        for frame in frames:
+            for this_frame_report_index in range(0, data_reports_per_frame):
+                report = ReportWithData(
+                    "19{this_frame_report_index[1]:02x}{frame_index:02x}{total_frames:02x}{frame_time:02x}0000",
+                    index=report_index,
+                    header_format_values={
+                        "this_frame_report_index": (this_frame_report_index).to_bytes(2, byteorder="big"),
+                        "frame_index": (frame.index).to_bytes(1, byteorder="big"),
+                        "total_frames": (len(frames)).to_bytes(1, byteorder="big"),
+                        "frame_time": (frame.time_ms).to_bytes(1, byteorder="big")
+                        },
+                    checksum_index=7
+                    )
+                # This is messy. Need to work out if this report should have any key data.
+                data_mask = bytearray(data_buffer_length)
+                for key_index, rgb in frame.key_map:
+                    report_key_index = (key_index * 3) - (this_frame_report_index * data_buffer_length)
+                    if report_key_index in range(0, data_buffer_length):
+                        self._apply_keymask(key_index, rgb, data_mask)
+                report.add_data(data_mask)
+                self._insert_report(report)
+
+                report_index += 1
+
+    def get_data_reports(self) -> list[ReportWithData]:
+        return [r for r in self.reports if isinstance(r, ReportWithData)]
+
+    def report_data_contain_index(self, report: ReportWithData, index: int) -> bool:
+        """Checks if the provided report contains the specified index if all the data portions of
+        the reports were to be indexed linearly.
+
+        Uses BUFF_LENGTH - self.report_data_header_length so this function can be used before
+        the data is set.
+        """
+        report_index_count = 0
+        data_buffer_length = BUFF_LENGTH - self.report_data_header_length
+        for report in self.get_data_reports():
+            report_data = report[self.report_data_header_length:]
+            if report_index_count <= index < report_index_count + data_buffer_length:
+                return True
+            report_index_count += len(report_data)
+        return False
+
+    def _apply_keymask(self, key_index: int, rgb: tuple[int, int, int], data_mask: bytearray) -> None:
+        """Applies a keymask for a specific key and RGB value."""
+        assert data_mask[key_index] != 0x00 \
+            and data_mask[key_index + 1] != 0x00 \
+            and data_mask[key_index + 2] != 0x00, (
+            f"Key index {key_index} already has a value."
+            )
+        data_mask[key_index] = rgb[0]
+        data_mask[key_index] = rgb[1]
+        data_mask[key_index] = rgb[2]
+
+class EpomakerTimeCommand(EpomakerCommand):
     """A command for setting the time on the keyboard."""
     def __init__(self, time: datetime) -> None:
-        initialization_data = bytearray.fromhex(
-            "28000000000000d7"
-            + self._format_time(time)
-            )
-        super().__init__(initialization_data)
+        initialization_data = "28000000000000d7" + self._format_time(time)
+        initial_report = Report(initialization_data,
+                                index=0,
+                                checksum_index=None)
+        super().__init__(initial_report)
 
     @staticmethod
     def _format_time(time: datetime) -> str:
@@ -264,63 +340,23 @@ class EpomakerTimeCommand(EpomakerSimpleCommand):
 
         return command
 
-class EpomakerTempCommand(EpomakerSimpleCommand):
+class EpomakerTempCommand(EpomakerCommand):
     """A command for setting the temperature on the keyboard."""
     def __init__(self, temp: int) -> None:
-        initialization_data = bytearray.fromhex(
-            "2a000000000000d5"
-            + f"{temp:02x}"
-            )
-        super().__init__(initialization_data)
+        initialization_data = "2a000000000000d5" + f"{temp:02x}"
+        initial_report = Report(initialization_data,
+                                index=0,
+                                checksum_index=None)
+        super().__init__(initial_report)
 
-class EpomakerCpuCommand(EpomakerSimpleCommand):
+class EpomakerCpuCommand(EpomakerCommand):
     """A command for setting the CPU usage on the keyboard."""
     def __init__(self, cpu: int) -> None:
-        initialization_data = bytearray.fromhex(
-            "22000000000000dd63007f0004000800"
-            + f"{cpu:02x}"
-            )
-        super().__init__(initialization_data)
-
-class EpomakerKeyRGBCommand(EpomakerCommand):
-    """Change a selection of keys to specific RGB values."""
-    def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
-        packet_header_length = 8
-        total_packets = (7*len(frames)) + 1
-        super().__init__(bytearray.fromhex("18000000000000e7"), packet_header_length, total_packets)
-
-        header_data = []
-        packet_header_format = PacketHeaderFormat(
-            format_string="19{packet_index_bytes[1]:02x}{frame_index:02x}{total_frames:02x}{frame_time:02x}0000",
-            # format_string_final="19{id_bytes[1]:02x}0001320000"
-            )
-        for frame in frames:
-            header_data += [
-                *self._generate_header_data(
-                    packet_header_format,
-                    range(0, 7),
-                    {
-                        "frame_index": frame.index,
-                        "total_frames": len(frames),
-                        "frame_time": frame.time_ms,
-                    }
-                )
-            ]
-        super()._insert_packet_headers(header_data)
-        for frame in frames:
-            for key_index, rgb in frame.key_map:
-                self._apply_keymask(key_index, rgb, frame)
-
-    def _apply_keymask(self, key_index: int, rgb: tuple[int, int, int], frame: KeyboardRGBFrame) -> None:
-        data_start = frame.index * frame.length
-        data_end = data_start + frame.length
-        current_packet_data = self._get_data_view((data_start, data_end))
-        for i in range(3):
-            data_index = np.unravel_index(
-                key_index*3 + i,
-                current_packet_data.shape
-                )
-            current_packet_data[data_index] = rgb[i]
+        initialization_data = "22000000000000dd63007f0004000800" + f"{cpu:02x}"
+        initial_report = Report(initialization_data,
+                                index=0,
+                                checksum_index=None)
+        super().__init__(initial_report)
 
 
 # class EpomakerProfileCommand(EpomakerSimpleCommand):
