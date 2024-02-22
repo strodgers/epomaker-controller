@@ -5,7 +5,10 @@ from typing import Iterator
 from epomakercontroller import __main__
 from epomakercontroller.epomakercontroller import EpomakerController
 from epomakercontroller.data.key_map import (
-    KeyboardKey
+    KeyboardKey,
+    KeyMap,
+    ALL_KEYBOARD_KEYS,
+    KeyboardRGBFrame
 )
 from epomakercontroller.commands import (
     EpomakerCommand,
@@ -19,7 +22,7 @@ import matplotlib.pyplot as plt
 import cv2
 
 # Set to True to display images
-DISPLAY = True
+DISPLAY = False
 
 @pytest.fixture
 def runner() -> CliRunner:
@@ -246,19 +249,24 @@ def test_checksum() -> None:
 
 def test_set_rgb() -> None:
     this_test_data = all_test_data["EpomakerKeyRGBCommand-single-key"]
-    command = EpomakerKeyRGBCommand(
-        [KeyboardKey.A],
-        (255, 0, 0)
-    )
+    mapping = KeyMap()
+    mapping[KeyboardKey.A] = (255, 0, 0)
+    frames = [KeyboardRGBFrame(mapping, 50)]
+    command = EpomakerKeyRGBCommand(frames)
 
     for t, d in zip(this_test_data, command):
         assert t == d
 
     this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
-    command = EpomakerKeyRGBCommand(
-        [KeyboardKey[e.name] for e in KeyboardKey],
-        (100, 5, 69)
-    )
+    mapping = KeyMap()
+    for key in ALL_KEYBOARD_KEYS:
+        mapping[key] = (100, 5, 69)
+    frames = [KeyboardRGBFrame(mapping, 50)]
+    command = EpomakerKeyRGBCommand(frames)
+    # command = EpomakerKeyRGBCommand(
+    #     [KeyboardKey[e.name] for e in KeyboardKey],
+    #     (100, 5, 69)
+    # )
 
     for t, d in zip(this_test_data, command):
         assert t == d

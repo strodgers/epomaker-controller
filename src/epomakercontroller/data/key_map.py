@@ -1,5 +1,7 @@
 from enum import Enum
 from dataclasses import dataclass
+from typing import Iterator
+
 
 @dataclass(frozen=True)
 class KeyboardKey(Enum):
@@ -102,5 +104,27 @@ class KeyboardKey(Enum):
     NUMPAD_PLUS = 99
     NUMPAD_3 = 100
     NUMPAD_ENTER = 101
+ALL_KEYBOARD_KEYS = [KeyboardKey[e.name] for e in KeyboardKey]
 
+class KeyMap:
+    """Map a KeyboardKey index to an RGB value."""
+    def __init__(self) -> None:
+        self.key_map: dict[int, tuple[int, int, int]] = {}
 
+    def __getitem__(self, key: KeyboardKey) -> tuple[int, int, int]:
+        return self.key_map[key.value]
+
+    def __setitem__(self, key: KeyboardKey, value: tuple[int, int, int]) -> None:
+        self.key_map[key.value] = value
+
+    def __iter__(self) -> Iterator[tuple[int, tuple[int, int, int]]]:
+        return iter(self.key_map.items())
+
+@dataclass(frozen=True)
+class KeyboardRGBFrame:
+    """A keyboard frame consists of a map of keys to RGB values as well as a time in milliseconds
+    to display the frame."""
+    key_map: KeyMap
+    time_ms: int
+    length: int = 7
+    index: int = 0

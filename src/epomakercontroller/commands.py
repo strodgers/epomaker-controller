@@ -4,7 +4,7 @@ import dataclasses
 import numpy as np
 import cv2
 
-from .data.key_map import KeyboardKey
+from .data.key_map import KeyboardKey, KeyboardRGBFrame, KeyMap
 
 IMAGE_DIMENSIONS = (162, 173)
 BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
@@ -12,7 +12,6 @@ BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
 @dataclasses.dataclass
 class PacketHeaderFormat:
     format_string: str
-    format_string_final: str
     has_checksum: bool = True
 
 class EpomakerCommand():
@@ -62,9 +61,12 @@ class EpomakerCommand():
         for packet in self.command:
             yield np.ndarray.tobytes(packet)
 
-    def _get_data_view(self) -> np.ndarray[np.uint8]:
+    def _get_data_view(self, subset: tuple[int, int] = (-1, -1)) -> np.ndarray[np.uint8]:
         """ Returns a view of the data portion of the command."""
-        return self.command[1:, self.packet_header_length:]
+        data_view = self.command[1:, self.packet_header_length:]
+        if subset != (-1, -1):
+            return data_view[subset[0]:subset[1], :]
+        return data_view
 
     def _get_header_view(self) -> np.ndarray[np.uint8]:
         """ Returns a view of the header portion of the command."""
@@ -81,22 +83,42 @@ class EpomakerCommand():
         checksum = (0xFF - sum_bits) & 0xFF
         return bytes([checksum])
 
-    def _generate_header_data(self, packet_header_format: PacketHeaderFormat, index_bytes:int = 4) -> Iterator[bytearray]:
+    def _generate_header_data(self, packet_header_format: PacketHeaderFormat, count_range: range,
+                              format_args: dict[str, int] = {}) -> Iterator[bytearray]:
         if packet_header_format is None:
-            raise ValueError("Packet header format must be defined before generating header data.")
+            raise ValueError("Packet header must be defined before generating header data.")
 
-        def format_bytearray(index: int, format_string: str, has_checksum: bool) -> bytearray:
-            data = bytearray.fromhex(format_string.format(id_bytes=index.to_bytes(2, "big")))
-            if has_checksum:
+        for packet_index in count_range:
+            formatted_string = packet_header_format.format_string.format(
+                **format_args,
+                packet_index_bytes=packet_index.to_bytes(2, "big")
+                )
+            data = bytearray.fromhex(formatted_string)
+            if packet_header_format.has_checksum:
                 data += self._calculate_checksum(data)
-            return data
 
-        i = 0
-        while i < self.total_packets - 2:
-            yield format_bytearray(i, packet_header_format.format_string, packet_header_format.has_checksum)
-            i += 1
+            yield data
 
-        yield format_bytearray(i, packet_header_format.format_string_final, packet_header_format.has_checksum)
+        # def format_bytearray(index: int, format_string: str, has_checksum: bool) -> bytearray:
+        #     ret = bytearray.fromhex(format_string.format(
+        #         id_bytes=index.to_bytes(2, "big")
+        #         ))
+        #     if has_checksum:
+        #         ret += self._calculate_checksum(ret)
+        #     return ret
+
+        # i = 0
+        # while i < self.total_packets - 2:
+        #     yield format_bytearray(i,
+        #                            packet_header_format.format_string,
+        #                            packet_header_format.has_checksum,
+        #                            )
+        #     i += 1
+
+        # yield format_bytearray(i,
+        #                        packet_header_format.format_string_final,
+        #                        packet_header_format.has_checksum,
+        #                        )
 
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
@@ -106,13 +128,31 @@ class EpomakerImageCommand(EpomakerCommand):
         total_packets = 1002
         super().__init__(initialization_data, packet_header_length, total_packets)
 
+        header_data = []
         packet_header_format = PacketHeaderFormat(
-            format_string="25000100{id_bytes[1]:02x}{id_bytes[0]:02x}38",
-            format_string_final="25000100{id_bytes[1]:02x}{id_bytes[0]:02x}34"
+            format_string="25000100{packet_index_bytes[1]:02x}{packet_index_bytes[0]:02x}38",
             )
-        header_data = [
-            data for data in self._generate_header_data(packet_header_format)
+        header_data += [
+            *self._generate_header_data(
+                packet_header_format,
+                range(0, total_packets-2),
+            )
         ]
+
+        # End is different
+        packet_header_format = PacketHeaderFormat(
+            format_string="25000100{packet_index_bytes[1]:02x}{packet_index_bytes[0]:02x}34"
+            )
+        header_data += [
+            *self._generate_header_data(
+                packet_header_format,
+                range(total_packets-2, total_packets-1),
+            )
+        ]
+
+        # header_data = [
+        #     data for data in self._generate_header_data(packet_header_format)
+        # ]
 
         super()._insert_packet_headers(header_data)
         self.image_data = np.zeros(
@@ -244,30 +284,40 @@ class EpomakerCpuCommand(EpomakerSimpleCommand):
 
 class EpomakerKeyRGBCommand(EpomakerCommand):
     """Change a selection of keys to specific RGB values."""
-    def __init__(self, keys: list[KeyboardKey], rgb: tuple[int, int, int]) -> None:
+    def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
         packet_header_length = 8
-        total_packets = 8
+        total_packets = (7*len(frames)) + 1
         super().__init__(bytearray.fromhex("18000000000000e7"), packet_header_length, total_packets)
 
+        header_data = []
         packet_header_format = PacketHeaderFormat(
-            format_string="19{id_bytes[1]:02x}0001320000",
-            format_string_final="19{id_bytes[1]:02x}0001320000"
+            format_string="19{packet_index_bytes[1]:02x}{frame_index:02x}{total_frames:02x}{frame_time:02x}0000",
+            # format_string_final="19{id_bytes[1]:02x}0001320000"
             )
-        header_data = [
-            data for data in self._generate_header_data(packet_header_format, index_bytes=2)
-        ]
-
+        for frame in frames:
+            header_data += [
+                *self._generate_header_data(
+                    packet_header_format,
+                    range(0, 7),
+                    {
+                        "frame_index": frame.index,
+                        "total_frames": len(frames),
+                        "frame_time": frame.time_ms,
+                    }
+                )
+            ]
         super()._insert_packet_headers(header_data)
+        for frame in frames:
+            for key_index, rgb in frame.key_map:
+                self._apply_keymask(key_index, rgb, frame)
 
-        for key in keys:
-            self._apply_keymask(key, rgb)
-
-    def _apply_keymask(self, key: KeyboardKey, rgb: tuple[int, int, int]) -> None:
-        index = key.value
-        current_packet_data = self._get_data_view()
+    def _apply_keymask(self, key_index: int, rgb: tuple[int, int, int], frame: KeyboardRGBFrame) -> None:
+        data_start = frame.index * frame.length
+        data_end = data_start + frame.length
+        current_packet_data = self._get_data_view((data_start, data_end))
         for i in range(3):
             data_index = np.unravel_index(
-                index*3 + i,
+                key_index*3 + i,
                 current_packet_data.shape
                 )
             current_packet_data[data_index] = rgb[i]
