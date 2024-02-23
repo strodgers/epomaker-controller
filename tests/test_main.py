@@ -14,7 +14,8 @@ from epomakercontroller.commands import (
     EpomakerCommand,
     EpomakerImageCommand,
     EpomakerKeyRGBCommand,
-    IMAGE_DIMENSIONS
+    IMAGE_DIMENSIONS,
+    Report
 )
 import random
 import numpy as np
@@ -201,22 +202,30 @@ def test_encode_image_command() -> None:
     this_test_data = all_test_data["EpomakerImageCommand-upload-calibration-image"]
     command.encode_image("tests/data/calibration.png")
 
+    # Initial report should always be equal
+    assert command.reports[0].report_bytearray == this_test_data.command_data[0]
+
     i = 0
     for t, d in zip(this_test_data, command):
-        difference = byte_wise_difference(t, d)
+        if i == 0:
+            i += 1
+            continue
+
+        difference = byte_wise_difference(t, d[:])
 
         # Headers should always be equal
-        assert t[:command.packet_header_length] == d[:command.packet_header_length]
+        assert t[:command.report_data_header_length] == d[:command.report_data_header_length]
 
         # Iterate over byte pairs and assert the color difference
         j = 0
-        for d_colour, t_colour in zip(pair_bytes(d), pair_bytes(t)):
+        for d_colour, t_colour in zip(d[command.report_data_header_length:],
+                                      t[command.report_data_header_length:]):
             # Convert byte pair to integer
             # Assert the colour difference
             if d_colour != t_colour:
                 assert_colour_close(
-                    EpomakerImageCommand._decode_rgb565(int(d_colour, 16)),
-                    EpomakerImageCommand._decode_rgb565(int(t_colour,16)),
+                    EpomakerImageCommand._decode_rgb565(d_colour),
+                    EpomakerImageCommand._decode_rgb565(t_colour),
                     debug_str=f"Packet {i}, Pair {j} "
                     )
 
@@ -231,7 +240,7 @@ def test_checksum() -> None:
     this_test_data = all_test_data["EpomakerCommand-cycle-light-modes-command"]
     checkbit = 8
     for i, t in enumerate(this_test_data):
-        checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
+        checksum = Report._calculate_checksum(t[:checkbit])
         assert checksum == t[checkbit].to_bytes(1, byteorder="big"), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
 
     # Some commands use the 7th bit as the checksum
@@ -243,7 +252,7 @@ def test_checksum() -> None:
         all_test_data["EpomakerKeyRGBCommand-single-key"]
         ]:
           for i, t in enumerate(this_test_data):
-                checksum = EpomakerCommand._calculate_checksum(t[:checkbit])
+                checksum = Report._calculate_checksum(t[:checkbit])
                 assert checksum == t[checkbit].to_bytes(1, byteorder="big"), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
 
 
@@ -255,7 +264,7 @@ def test_set_rgb() -> None:
     command = EpomakerKeyRGBCommand(frames)
 
     for t, d in zip(this_test_data, command):
-        assert t == d
+        assert t == d[:]
 
     this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
     mapping = KeyMap()
@@ -263,10 +272,6 @@ def test_set_rgb() -> None:
         mapping[key] = (100, 5, 69)
     frames = [KeyboardRGBFrame(mapping, 50)]
     command = EpomakerKeyRGBCommand(frames)
-    # command = EpomakerKeyRGBCommand(
-    #     [KeyboardKey[e.name] for e in KeyboardKey],
-    #     (100, 5, 69)
-    # )
 
     for t, d in zip(this_test_data, command):
-        assert t == d
+        assert t == d[:]

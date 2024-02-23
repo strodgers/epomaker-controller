@@ -3,6 +3,7 @@ from datetime import datetime
 import dataclasses
 import numpy as np
 import cv2
+import numpy.typing as npt
 
 from .data.key_map import KeyboardKey, KeyboardRGBFrame, KeyMap
 
@@ -15,11 +16,18 @@ class Report:
     header_format_string: str
     checksum_index: int | None
     index: int
-    header_format_values: dict[str, bytes] = dataclasses.field(default_factory=dict)
+    pad_on_init: bool = True
+    header_format_values: dict[str, int] = dataclasses.field(default_factory=dict)
+    report_bytearray: bytearray | None = None,
+    header_length: int | None = None
     def __post_init__(self) -> None:
-        self.report_bytearray = bytearray.fromhex(
+        if self.header_format_values == {}:
+            self.report_bytearray = bytearray.fromhex(self.header_format_string)
+        else:
+            self.report_bytearray = bytearray.fromhex(
             self.header_format_string.format(**self.header_format_values)
             )
+        self.header_length = len(self.report_bytearray)
         if self.checksum_index is not None:
             self.report_bytearray += self._calculate_checksum(self._get_header())
         assert len(self.report_bytearray) <= BUFF_LENGTH, (
@@ -27,8 +35,10 @@ class Report:
             f"{BUFF_LENGTH}."
             )
         self.header_length = len(self.report_bytearray)
+        if self.pad_on_init:
+            self._pad()
 
-    def pad(self) -> None:
+    def _pad(self) -> None:
         """Pads the report header with zeros to the maximum length."""
         assert self.report_bytearray is not None, "Report bytearray must be set before padding."
         self.report_bytearray += bytes(BUFF_LENGTH - len(self.report_bytearray))
@@ -45,25 +55,42 @@ class Report:
         return self[self.checksum_index]
 
     def _get_header(self) -> bytes:
-        return self[:self.header_length]
+        assert self.header_length is not None, "Header length must be set before getting."
+        assert self.report_bytearray is not None, "Report bytearray must be set before getting."
+        return self.report_bytearray[:self.header_length]
 
     def __getitem__(self, key: int | slice) -> bytes:
         assert self.report_bytearray is not None, "Report bytearray must be set before getting."
         return bytes(self.report_bytearray[key])
 
+@dataclasses.dataclass()
 class ReportWithData(Report):
-    def __post_init__(self) -> None:
-        self.prepared: bool = False
+    def __init__(self, header_format_string: str, checksum_index: int | None, index: int,
+                 header_format_values: dict[str, int] = dataclasses.field(default_factory=dict),
+                 report_bytearray: bytearray | None = None,
+                 header_length: int | None = None,
+                 report_data: bytearray | None = None,
+                 prepared: bool = False,
+                 ) -> None:
+        super().__init__(header_format_string, checksum_index, index, False, header_format_values,
+                         report_bytearray, header_length)
+        self.report_data: bytearray | None = report_data
+        self.prepared: bool = prepared
+        if self.report_data is not None:
+            self.prepared = True
 
     def add_data(self, data: bytes) -> None:
         assert self.prepared is False, "Report data has already been set."
+        assert self.report_bytearray is not None, "Report bytearray must be set before adding data."
         self.report_data = bytearray(data)
+        self.report_bytearray += self.report_data
+        self._pad()
         self.prepared = True
 
-    def __getitem__(self, key: int | slice) -> bytes:
-        assert self.report_bytearray is not None, "Report bytearray must be set before getting."
-        assert self.report_data is not None, "Report data must be set before getting."
-        return bytes((self.report_bytearray + self.report_data)[key])
+    # def __getitem__(self, key: int | slice) -> bytes:
+    #     assert self.report_bytearray is not None, "Report bytearray must be set before getting."
+    #     assert self.report_data is not None, "Report data must be set before getting."
+    #     return bytes((self.report_bytearray + self.report_data)[key])
 
 @dataclasses.dataclass(frozen=True)
 class CommandStructure:
@@ -105,7 +132,7 @@ class EpomakerCommand():
         self.reports.append(report)
 
     @staticmethod
-    def _np16_to_np8(data_16bit: np.ndarray[np.uint16]) -> np.ndarray[np.uint8]:
+    def _np16_to_np8(data_16bit: npt.NDArray[np.uint16]) -> npt.NDArray[np.uint8]:
         """Converts a numpy array of 16-bit numbers to 8-bit numbers."""
         new_shape = (data_16bit.shape[0], data_16bit.shape[1] * 2)
         data_8bit_flat = np.empty(data_16bit.size * 2, dtype=np.uint8)
@@ -116,7 +143,8 @@ class EpomakerCommand():
         return data_8bit_flat.reshape(new_shape)
 
     def __iter__(self) -> Iterator[Report]:
-        yield from self
+        for report in self.reports:
+            yield report
 
     def __getitem__(self, key: int) -> Report:
         report = next((r for r in self.reports if r.index == key), None)
@@ -190,10 +218,14 @@ class EpomakerImageCommand(EpomakerCommand):
         data_buff_length = BUFF_LENGTH - self.report_data_header_length
         data_buff_pointer = 0
         for report_index in range(0, self.structure.number_of_data_reports):
+            report_index_bytes = report_index.to_bytes(2, "big")
             report = ReportWithData(
-                header_format_string="25000100{report_index_bytes[1]:02x}{report_index_bytes[0]:02x}38",
+                header_format_string="25000100{report_index_bytes_upper:02x}{report_index_bytes_lower:02x}38",
                 index=report_index + self.structure.number_of_starter_reports,
-                header_format_values={"report_index_bytes": (report_index).to_bytes(2, byteorder="big")},
+                header_format_values={
+                    "report_index_bytes_upper": report_index_bytes[1],
+                    "report_index_bytes_lower": report_index_bytes[0],
+                    },
                 checksum_index=7
             )
             report.add_data(image_8bit_flattened[
@@ -210,17 +242,21 @@ class EpomakerImageCommand(EpomakerCommand):
         self.report_data_prepared = True
 
         # Add the footer report
+        footer_index_bytes = (self.structure.number_of_starter_reports + self.structure.number_of_data_reports - self.structure.number_of_footer_reports).to_bytes(2, "big")
         footer_report = ReportWithData(
-            header_format_string="25000100{report_index_bytes[1]:02x}{report_index_bytes[0]:02x}34",
+            header_format_string="25000100{footer_index_bytes_upper:02x}{footer_index_bytes_lower:02x}34",
             index=self.structure.number_of_starter_reports + self.structure.number_of_data_reports,
-            header_format_values={"report_index_bytes": (self.structure.number_of_data_reports).to_bytes(2, byteorder="big")},
+            header_format_values={
+                    "footer_index_bytes_upper": footer_index_bytes[1],
+                    "footer_index_bytes_lower": footer_index_bytes[0],
+                },
             checksum_index=7
             )
         footer_report.add_data(image_8bit_flattened[
             data_buff_pointer:data_buff_pointer + data_buff_length
             ].tobytes())
         # Need some padding at the end of the image data
-        footer_report.pad()
+        footer_report._pad()
         self._insert_report(footer_report)
 
         self.report_footer_prepared = True
@@ -234,9 +270,10 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
     def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
         initialization_data = "18000000000000e7"
         self.report_data_header_length = 8
+        data_reports_per_frame = 7
         structure = CommandStructure(
             number_of_starter_reports=1,
-            number_of_data_reports=len(frames),
+            number_of_data_reports=len(frames) * data_reports_per_frame,
             number_of_footer_reports=0
             )
         initial_report = Report(
@@ -247,29 +284,30 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
 
         report_index = 1
         data_buffer_length = BUFF_LENGTH - self.report_data_header_length
-        data_reports_per_frame = 7
         for frame in frames:
             for this_frame_report_index in range(0, data_reports_per_frame):
                 report = ReportWithData(
-                    "19{this_frame_report_index[1]:02x}{frame_index:02x}{total_frames:02x}{frame_time:02x}0000",
+                    "19{this_frame_report_index:02x}{frame_index:02x}{total_frames:02x}{frame_time:02x}0000",
                     index=report_index,
                     header_format_values={
-                        "this_frame_report_index": (this_frame_report_index).to_bytes(2, byteorder="big"),
-                        "frame_index": (frame.index).to_bytes(1, byteorder="big"),
-                        "total_frames": (len(frames)).to_bytes(1, byteorder="big"),
-                        "frame_time": (frame.time_ms).to_bytes(1, byteorder="big")
+                        "this_frame_report_index": this_frame_report_index,
+                        "frame_index": frame.index,
+                        "total_frames": len(frames),
+                        "frame_time": frame.time_ms,
                         },
                     checksum_index=7
                     )
-                # This is messy. Need to work out if this report should have any key data.
-                data_mask = bytearray(data_buffer_length)
+                # Zero out the data buffer
+                data_byterarray = bytearray(data_buffer_length)
                 for key_index, rgb in frame.key_map:
-                    report_key_index = (key_index * 3) - (this_frame_report_index * data_buffer_length)
-                    if report_key_index in range(0, data_buffer_length):
-                        self._apply_keymask(key_index, rgb, data_mask)
-                report.add_data(data_mask)
+                    # For each key, set the RGB values in the data buffer
+                    for i, colour in enumerate(rgb):
+                        # R, G, B individually
+                        this_frame_colour_index = (key_index * 3) - (this_frame_report_index * data_buffer_length) + i
+                        if 0 <= this_frame_colour_index < len(data_byterarray):
+                            data_byterarray[this_frame_colour_index] = colour
+                report.add_data(data_byterarray)
                 self._insert_report(report)
-
                 report_index += 1
 
     def get_data_reports(self) -> list[ReportWithData]:
@@ -290,17 +328,6 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                 return True
             report_index_count += len(report_data)
         return False
-
-    def _apply_keymask(self, key_index: int, rgb: tuple[int, int, int], data_mask: bytearray) -> None:
-        """Applies a keymask for a specific key and RGB value."""
-        assert data_mask[key_index] != 0x00 \
-            and data_mask[key_index + 1] != 0x00 \
-            and data_mask[key_index + 2] != 0x00, (
-            f"Key index {key_index} already has a value."
-            )
-        data_mask[key_index] = rgb[0]
-        data_mask[key_index] = rgb[1]
-        data_mask[key_index] = rgb[2]
 
 class EpomakerTimeCommand(EpomakerCommand):
     """A command for setting the time on the keyboard."""
