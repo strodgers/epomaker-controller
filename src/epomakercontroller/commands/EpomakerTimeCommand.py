@@ -2,13 +2,13 @@ from datetime import datetime
 from .EpomakerCommand import EpomakerCommand
 from .reports.Report import Report
 
+
 class EpomakerTimeCommand(EpomakerCommand):
     """A command for setting the time on the keyboard."""
+
     def __init__(self, time: datetime) -> None:
         initialization_data = "28000000000000d7" + self._format_time(time)
-        initial_report = Report(initialization_data,
-                                index=0,
-                                checksum_index=None)
+        initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report)
 
     @staticmethod

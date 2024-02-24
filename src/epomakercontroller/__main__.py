@@ -1,6 +1,8 @@
 """Command-line interface."""
+
 import click
 from epomakercontroller import *
+
 
 @click.command()
 @click.version_option()

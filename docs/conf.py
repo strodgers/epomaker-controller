@@ -1,4 +1,5 @@
 """Sphinx configuration."""
+
 project = "Epomakercontroller"
 author = "Sam Rodgers"
 copyright = "2024, Sam Rodgers"

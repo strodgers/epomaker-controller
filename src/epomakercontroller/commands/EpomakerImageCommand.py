@@ -6,16 +6,18 @@ from .data.constants import IMAGE_DIMENSIONS
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
 
+
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
+
     def __init__(self) -> None:
         initialization_data = "a5000100f4da008b0000a2ad"
         self.report_data_header_length = 8
         structure = CommandStructure(
             number_of_starter_reports=1,
             number_of_data_reports=1000,
-            number_of_footer_reports=1
-            )
+            number_of_footer_reports=1,
+        )
         initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report, structure)
 
@@ -41,9 +43,9 @@ class EpomakerImageCommand(EpomakerCommand):
         b = (pixel & 0x001F) << 3  # Blue: 5 bits
 
         # We need to adjust them because we're expanding to 8 bits per channel
-        r |= (r >> 5)
-        g |= (g >> 6)
-        b |= (b >> 5)
+        r |= r >> 5
+        g |= g >> 6
+        b |= b >> 5
 
         return (r, g, b)
 
@@ -60,7 +62,9 @@ class EpomakerImageCommand(EpomakerCommand):
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
         image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
-        image_16bit = np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype=np.uint16)
+        image_16bit = np.zeros(
+            (IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype=np.uint16
+        )
         try:
             for y in range(image.shape[0]):
                 for x in range(image.shape[1]):
@@ -80,42 +84,51 @@ class EpomakerImageCommand(EpomakerCommand):
                 header_format_values={
                     "report_index_bytes_upper": report_index_bytes[1],
                     "report_index_bytes_lower": report_index_bytes[0],
-                    },
-                checksum_index=7
+                },
+                checksum_index=7,
             )
-            report.add_data(image_8bit_flattened[
-                data_buff_pointer:data_buff_pointer + data_buff_length
-                ].tobytes())
+            report.add_data(
+                image_8bit_flattened[
+                    data_buff_pointer : data_buff_pointer + data_buff_length
+                ].tobytes()
+            )
             data_buff_pointer += data_buff_length
             self._insert_report(report)
 
         assert len(self.get_data_reports()) == self.structure.number_of_data_reports, (
             f"Expected {self.structure.number_of_data_reports} reports, got "
             f"{len(self.get_data_reports())}."
-            )
+        )
 
         self.report_data_prepared = True
 
         # Add the footer report
-        footer_index_bytes = (self.structure.number_of_starter_reports + self.structure.number_of_data_reports - self.structure.number_of_footer_reports).to_bytes(2, "big")
+        footer_index_bytes = (
+            self.structure.number_of_starter_reports
+            + self.structure.number_of_data_reports
+            - self.structure.number_of_footer_reports
+        ).to_bytes(2, "big")
         footer_report = ReportWithData(
             header_format_string="25000100{footer_index_bytes_upper:02x}{footer_index_bytes_lower:02x}34",
-            index=self.structure.number_of_starter_reports + self.structure.number_of_data_reports,
+            index=self.structure.number_of_starter_reports
+            + self.structure.number_of_data_reports,
             header_format_values={
-                    "footer_index_bytes_upper": footer_index_bytes[1],
-                    "footer_index_bytes_lower": footer_index_bytes[0],
-                },
-            checksum_index=7
-            )
-        footer_report.add_data(image_8bit_flattened[
-            data_buff_pointer:data_buff_pointer + data_buff_length
-            ].tobytes())
+                "footer_index_bytes_upper": footer_index_bytes[1],
+                "footer_index_bytes_lower": footer_index_bytes[0],
+            },
+            checksum_index=7,
+        )
+        footer_report.add_data(
+            image_8bit_flattened[
+                data_buff_pointer : data_buff_pointer + data_buff_length
+            ].tobytes()
+        )
         # Need some padding at the end of the image data
         footer_report._pad()
         self._insert_report(footer_report)
 
         self.report_footer_prepared = True
 
-        assert len(self.reports) == len(self.structure), (
-            f"Expected {len(self.structure)} reports, got {len(self.reports)}."
-            )
+        assert len(self.reports) == len(
+            self.structure
+        ), f"Expected {len(self.structure)} reports, got {len(self.reports)}."

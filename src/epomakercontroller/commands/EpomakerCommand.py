@@ -4,6 +4,7 @@ from .reports.Report import Report, ReportCollection
 import numpy as np
 import numpy.typing as npt
 
+
 @dataclasses.dataclass(frozen=True)
 class CommandStructure:
     number_of_starter_reports: int = 1
@@ -11,7 +12,12 @@ class CommandStructure:
     number_of_footer_reports: int = 0
 
     def __len__(self) -> int:
-        return self.number_of_starter_reports + self.number_of_data_reports + self.number_of_footer_reports
+        return (
+            self.number_of_starter_reports
+            + self.number_of_data_reports
+            + self.number_of_footer_reports
+        )
+
 
 class EpomakerCommand:
     """A command is basically just a wrapper around a numpy array of bytes.
@@ -24,9 +30,11 @@ class EpomakerCommand:
     associated header according to the commannd type.
     """
 
-    def __init__(self,  initial_report: Report,
-                 structure: CommandStructure = CommandStructure(),
-                ) -> None:
+    def __init__(
+        self,
+        initial_report: Report,
+        structure: CommandStructure = CommandStructure(),
+    ) -> None:
         self.reports: ReportCollection = ReportCollection()
         self.structure: CommandStructure = structure
         # If there are data reports, the command must be prepared before sending
@@ -38,7 +46,7 @@ class EpomakerCommand:
         assert report.index < len(self.structure), (
             f"Report index {report.index} exceeds the number of reports "
             f"{len(self.structure)}."
-            )
+        )
         # assert report.index not in [r.index for r in self.reports], (
         #     f"Report index {report.index} already exists."
         #     )

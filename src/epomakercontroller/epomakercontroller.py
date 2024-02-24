@@ -2,14 +2,16 @@ from datetime import datetime
 import time
 import hid
 
-from .commands import (EpomakerCommand,
-                       EpomakerImageCommand,
-                       EpomakerTimeCommand,
-                       EpomakerTempCommand,
-                       EpomakerCpuCommand,
-                       EpomakerKeyRGBCommand,
-                       )
+from .commands import (
+    EpomakerCommand,
+    EpomakerImageCommand,
+    EpomakerTimeCommand,
+    EpomakerTempCommand,
+    EpomakerCpuCommand,
+    EpomakerKeyRGBCommand,
+)
 from .commands.data.constants import BUFF_LENGTH
+
 VENDOR_ID = 0x3151
 PRODUCT_ID = 0x4010
 
@@ -31,8 +33,12 @@ class EpomakerController:
         format.
     """
 
-    def __init__(self, vendor_id: int=VENDOR_ID, product_id: int=PRODUCT_ID,
-                 dry_run: bool=True) -> None:
+    def __init__(
+        self,
+        vendor_id: int = VENDOR_ID,
+        product_id: int = PRODUCT_ID,
+        dry_run: bool = True,
+    ) -> None:
         self.vendor_id = vendor_id
         self.product_id = product_id
         self.device = hid.device()
@@ -56,7 +62,9 @@ class EpomakerController:
             print(f"Failed to open device: {e}")
             return False
 
-    def _send_command(self, command: EpomakerCommand.EpomakerCommand, sleep_time: float=0.1) -> None:
+    def _send_command(
+        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1
+    ) -> None:
         """
         Sends a command to the HID device.
         """
@@ -111,4 +119,3 @@ class EpomakerController:
 
     def __del__(self) -> None:
         self.close_device()
-

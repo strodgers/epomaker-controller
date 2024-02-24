@@ -6,8 +6,10 @@ from .reports.ReportWithData import ReportWithData
 from .data.constants import KeyboardKey
 from typing import Iterator
 
+
 class KeyMap:
     """Map a KeyboardKey index to an RGB value."""
+
     def __init__(self) -> None:
         self.key_map: dict[int, tuple[int, int, int]] = {}
 
@@ -25,6 +27,7 @@ class KeyMap:
 class KeyboardRGBFrame:
     """A keyboard frame consists of a map of keys to RGB values as well as a time in milliseconds
     to display the frame."""
+
     key_map: KeyMap
     time_ms: int
     length: int = 7
@@ -33,6 +36,7 @@ class KeyboardRGBFrame:
 
 class EpomakerKeyRGBCommand(EpomakerCommand):
     """Change a selection of keys to specific RGB values."""
+
     def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
         initialization_data = "18000000000000e7"
         self.report_data_header_length = 8
@@ -40,12 +44,9 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         structure = CommandStructure(
             number_of_starter_reports=1,
             number_of_data_reports=len(frames) * data_reports_per_frame,
-            number_of_footer_reports=0
-            )
-        initial_report = Report(
-            initialization_data,
-            index=0,
-            checksum_index=None)
+            number_of_footer_reports=0,
+        )
+        initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report, structure)
 
         report_index = 1
@@ -60,16 +61,20 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                         "frame_index": frame.index,
                         "total_frames": len(frames),
                         "frame_time": frame.time_ms,
-                        },
-                    checksum_index=7
-                    )
+                    },
+                    checksum_index=7,
+                )
                 # Zero out the data buffer
                 data_byterarray = bytearray(data_buffer_length)
                 for key_index, rgb in frame.key_map:
                     # For each key, set the RGB values in the data buffer
                     for i, colour in enumerate(rgb):
                         # R, G, B individually
-                        this_frame_colour_index = (key_index * 3) - (this_frame_report_index * data_buffer_length) + i
+                        this_frame_colour_index = (
+                            (key_index * 3)
+                            - (this_frame_report_index * data_buffer_length)
+                            + i
+                        )
                         if 0 <= this_frame_colour_index < len(data_byterarray):
                             data_byterarray[this_frame_colour_index] = colour
                 report.add_data(data_byterarray)
@@ -89,7 +94,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         report_index_count = 0
         data_buffer_length = BUFF_LENGTH - self.report_data_header_length
         for report in self.get_data_reports():
-            report_data = report[self.report_data_header_length:]
+            report_data = report[self.report_data_header_length :]
             if report_index_count <= index < report_index_count + data_buffer_length:
                 return True
             report_index_count += len(report_data)
