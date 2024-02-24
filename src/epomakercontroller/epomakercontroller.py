@@ -1,7 +1,6 @@
-import datetime
+from datetime import datetime
 import time
 import hid
-from datetime import datetime
 
 from .commands import (EpomakerCommand,
                        EpomakerImageCommand,
@@ -9,9 +8,8 @@ from .commands import (EpomakerCommand,
                        EpomakerTempCommand,
                        EpomakerCpuCommand,
                        EpomakerKeyRGBCommand,
-                       BUFF_LENGTH
                        )
-from .data.key_map import KeyboardKey
+from .commands.data.constants import BUFF_LENGTH
 VENDOR_ID = 0x3151
 PRODUCT_ID = 0x4010
 
@@ -58,7 +56,7 @@ class EpomakerController:
             print(f"Failed to open device: {e}")
             return False
 
-    def _send_command(self, command: EpomakerCommand, sleep_time: float=0.1) -> None:
+    def _send_command(self, command: EpomakerCommand.EpomakerCommand, sleep_time: float=0.1) -> None:
         """
         Sends a command to the HID device.
         """
@@ -71,37 +69,37 @@ class EpomakerController:
                 self.device.send_feature_report(packet)
             time.sleep(sleep_time)
 
-    def send_image(self, image_path: str, log_to_file: str = ".send_time_bytes.log") -> None:
+    def send_image(self, image_path: str) -> None:
         """
         Sends an image to the HID device.
         """
-        image_command = EpomakerImageCommand()
-        image_command.encode_image(image_path, log_to_file)
+        image_command = EpomakerImageCommand.EpomakerImageCommand()
+        image_command.encode_image(image_path)
         self._send_command(image_command, sleep_time=0.01)
 
     def send_time(self, time: datetime = datetime.now()) -> None:
         """
         Sends the current time to the HID device.
         """
-        time_command = EpomakerTimeCommand(time)
+        time_command = EpomakerTimeCommand.EpomakerTimeCommand(time)
         self._send_command(time_command)
 
     def send_temperature(self, temperature: int) -> None:
         """
         Sends the temperature to the HID device.
         """
-        temperature_command = EpomakerTempCommand(temperature)
+        temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         self._send_command(temperature_command)
 
     def send_cpu(self, cpu: int) -> None:
         """
         Sends the CPU percentage to the HID device.
         """
-        cpu_command = EpomakerCpuCommand(cpu)
+        cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
         self._send_command(cpu_command)
 
-    def send_key_rgb(self, key: KeyboardKey, rgb: tuple[int, int, int]) -> None:
-        rgb_command = EpomakerKeyRGBCommand([key], rgb)
+    def send_keys(self, frames: list[EpomakerKeyRGBCommand.KeyboardRGBFrame]) -> None:
+        rgb_command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
         self._send_command(rgb_command)
 
     def close_device(self) -> None:
