@@ -11,7 +11,7 @@ class Report:
     index: int
     pad_on_init: bool = True
     header_format_values: dict[str, int] = dataclasses.field(default_factory=dict)
-    report_bytearray: bytearray | None = None,
+    report_bytearray: bytearray | None = None
     header_length: int | None = None
     def __post_init__(self) -> None:
         if self.header_format_values == {}:

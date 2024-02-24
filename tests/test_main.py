@@ -3,13 +3,14 @@ import pytest
 from click.testing import CliRunner
 from typing import Iterator, Iterable
 from epomakercontroller.commands.data.constants import (
-    KeyboardKey,
     ALL_KEYBOARD_KEYS,
     IMAGE_DIMENSIONS,
+    Profile,
 )
 from epomakercontroller.commands import (
     EpomakerImageCommand,
     EpomakerKeyRGBCommand,
+    EpomakerProfileCommand,
 )
 from epomakercontroller.commands.reports import Report
 import random
@@ -50,6 +51,9 @@ class test_data:
     def __iter__(self) -> Iterator[bytes]:
         for data in self.command_data:
             yield data
+
+    def __getitem__(self, index: int) -> bytes:
+        return self.command_data[index]
 
 all_tests = [
     "EpomakerImageCommand-upload-calibration-image",
@@ -288,3 +292,19 @@ def test_set_rgb_multiple_frames() -> None:
 
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
     compare_bytes_iterable(this_test_data, command.iter_report_bytes())
+
+def test_set_light_mode() -> None:
+    this_test_data = all_test_data["EpomakerCommand-cycle-light-modes-command"]
+    profile = Profile(
+        mode=Profile.Mode.EPOMAKER_MODE_ALWAYS_ON,
+        speed=Profile.Speed.EPOMAKER_SPEED_DEFAULT,
+        brightness=Profile.Brightness.EPOMAKER_BRIGHTNESS_DEFAULT,
+        dazzle=Profile.Dazzle.EPOMAKER_DAZZLE_OFF,
+        option=Profile.Option.EPOMAKER_OPTION_OFF,
+        rgb=(180, 180, 180)
+    )
+    command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
+    assert this_test_data[0] == command.reports[0].report_bytearray
+
+    # TODO: there are loads of other light modes to test
+
