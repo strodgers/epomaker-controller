@@ -8,7 +8,7 @@ from epomakercontroller.commands import (
 )
 from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profile
 from epomakercontroller import EpomakerController
-from datetime import datetime
+import psutil
 
 @click.group()
 def cli() -> None:
@@ -94,7 +94,7 @@ def send_time() -> None:
 @cli.command()
 @click.argument('temperature', type=int)
 def send_temperature(temperature: int) -> None:
-    """Send the temperature to the Epomaker device."""
+    """Send temperature to the Epomaker screen."""
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -107,7 +107,7 @@ def send_temperature(temperature: int) -> None:
 @cli.command()
 @click.argument('cpu', type=int)
 def send_cpu(cpu: int) -> None:
-    """Send the CPU usage percentage to the Epomaker device."""
+    """Send CPU usage percentage to the Epomaker screen."""
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -116,6 +116,69 @@ def send_cpu(cpu: int) -> None:
         controller.close_device()
     except Exception as e:
         click.echo(f"Failed to send CPU usage: {e}")
+
+@cli.command()
+@click.argument('temp_key', type=str, required=False)
+def start_daemon(temp_key: str | None) -> None:
+    """Start a daemon to update the CPU usage and optionally a temperature."""
+    try:
+        controller = EpomakerController(dry_run=False)
+        while True:
+            if not controller.open_device():
+                click.echo("Failed to open device.")
+                return
+            # Set current time and date
+            controller.send_time()
+
+            # Get CPU usage
+            cpu_usage = round(psutil.cpu_percent(interval=1))
+            click.echo(f"CPU Usage: {cpu_usage}%")
+            controller.send_cpu(int(cpu_usage), from_daemon=True)
+
+            # Get device temperature using the provided key
+            if temp_key:
+                try:
+                    temps = psutil.sensors_temperatures()
+                    if temp_key in temps:
+                        cpu_temp = temps[temp_key][0].current
+                        rounded_cpu_temp = round(cpu_temp)
+                        click.echo(f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C")
+                        controller.send_temperature(rounded_cpu_temp)
+                    else:
+                        available_keys = list(temps.keys())
+                        click.echo(f"Temperature key '{temp_key}' not found. Available keys: {available_keys}")
+                except AttributeError:
+                    click.echo("Temperature monitoring not supported on this system.")
+
+
+            controller.close_device()
+
+            time.sleep(3)
+    except KeyboardInterrupt:
+        click.echo("Daemon interrupted by user.")
+    except Exception as e:
+        click.echo(f"Failed to start daemon: {e}")
+
+
+@cli.command()
+def list_temp_devices() -> None:
+    """List available temperature devices."""
+    try:
+        temps = psutil.sensors_temperatures()
+        if not temps:
+            click.echo("No temperature sensors found.")
+            return
+
+        for key, entries in temps.items():
+            click.echo(f"\nTemperature key: {key}")
+            for entry in entries:
+                click.echo(f"  Label: {entry.label or 'N/A'}")
+                click.echo(f"  Current: {entry.current}°C")
+                click.echo(f"  High: {entry.high or 'N/A'}°C")
+                click.echo(f"  Critical: {entry.critical or 'N/A'}°C")
+    except AttributeError:
+        click.echo("Temperature monitoring not supported on this system.")
+
 
 if __name__ == "__main__":
     cli()

@@ -13,7 +13,7 @@ This project is still very rough around the edges
 
 ## Requirements
 
-- See requirements.txt
+I am using poetry v1.7.1 to install the package
 
 ## Installation
 
@@ -33,7 +33,7 @@ $ poetry install
 ## Usage
 
 ```console
-$ epomakercontroller --help
+$ epomakercontroller
 Usage: epomakercontroller [OPTIONS] COMMAND [ARGS]...
 
   EpomakerController CLI.
@@ -43,12 +43,65 @@ Options:
 
 Commands:
   cycle-light-modes  Cycle through the light modes.
-  send-cpu           Send the CPU usage percentage to the Epomaker device.
-  send-temperature   Send the temperature to the Epomaker device.
+  list-temp-devices  List available temperature devices with detailed...
+  send-cpu           Send CPU usage percentage to the Epomaker device.
+  send-temperature   Send a temperature to the Epomaker device.
   send-time          Send the current time to the Epomaker device.
-  set-rgb-all-keys   Set RGB color for all keys.
+  set-rgb-all-keys   Set RGB colour for all keys.
+  start-daemon       Start the CPU daemon to update the CPU usage.
   upload-image       Upload an image to the Epomaker device.
 ```
+
+The temperature on the Epomaker screen is supposed to be for the weather, but I thought it was more
+useful to display the temperature of some device on the host machine. You will need to find out
+the label used by a sensor on your machine, which you can do by:
+```console
+$ epomakercontroller list-temp-devices
+
+Temperature key: nvme
+  Label: Composite
+  Current: 35.85°C
+  High: 82.85°C
+  Critical: 89.85°C
+  Label: Composite
+  Current: 44.85°C
+  High: 82.85°C
+  Critical: 89.85°C
+
+Temperature key: amdgpu
+  Label: edge
+  Current: 40.0°C
+  High: N/A°C
+  Critical: N/A°C
+
+Temperature key: k10temp
+  Label: Tctl
+  Current: 44.5°C
+  High: N/A°C
+  Critical: N/A°C
+  Label: Tccd1
+  Current: 39.0°C
+  High: N/A°C
+  Critical: N/A°C
+
+Temperature key: mt7921_phy0
+  Label: N/A
+  Current: 28.0°C
+  High: N/A°C
+  Critical: N/A°C
+```
+
+Then you can start the daemon with the corresponding label, eg:
+```console
+epomakercontroller start-daemon k10temp
+```
+
+Alternatively leave the label blank to disable and only do CPU usage:
+```console
+epomakercontroller start-daemon
+```
+
+The daemon will also update the date and time once when it starts
 
 ## Contributing
 
