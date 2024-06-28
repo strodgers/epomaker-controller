@@ -118,9 +118,9 @@ def send_cpu(cpu: int) -> None:
         click.echo(f"Failed to send CPU usage: {e}")
 
 @cli.command()
-@click.argument('temp_key', type=str)
-def start_daemon(temp_key: str) -> None:
-    """Start the CPU daemon to update the CPU usage."""
+@click.argument('temp_key', type=str, required=False)
+def start_daemon(temp_key: str | None) -> None:
+    """Start the CPU daemon to update the CPU usage and optionally a sensor temperature."""
     try:
         controller = EpomakerController(dry_run=False)
         while True:
@@ -133,18 +133,19 @@ def start_daemon(temp_key: str) -> None:
             controller.send_cpu(int(cpu_usage), from_daemon=True)
 
             # Get device temperature using the provided key
-            try:
-                temps = psutil.sensors_temperatures()
-                if temp_key in temps:
-                    cpu_temp = temps[temp_key][0].current
-                    rounded_cpu_temp = round(cpu_temp)
-                    click.echo(f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C")
-                    controller.send_temperature(rounded_cpu_temp)
-                else:
-                    available_keys = list(temps.keys())
-                    click.echo(f"Temperature key '{temp_key}' not found. Available keys: {available_keys}")
-            except AttributeError:
-                click.echo("Temperature monitoring not supported on this system.")
+            if temp_key:
+                try:
+                    temps = psutil.sensors_temperatures()
+                    if temp_key in temps:
+                        cpu_temp = temps[temp_key][0].current
+                        rounded_cpu_temp = round(cpu_temp)
+                        click.echo(f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C")
+                        controller.send_temperature(rounded_cpu_temp)
+                    else:
+                        available_keys = list(temps.keys())
+                        click.echo(f"Temperature key '{temp_key}' not found. Available keys: {available_keys}")
+                except AttributeError:
+                    click.echo("Temperature monitoring not supported on this system.")
 
 
             controller.close_device()
