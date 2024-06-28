@@ -118,7 +118,8 @@ def send_cpu(cpu: int) -> None:
         click.echo(f"Failed to send CPU usage: {e}")
 
 @cli.command()
-def start_daemon() -> None:
+@click.argument('temp_key', type=str)
+def start_daemon(temp_key: str) -> None:
     """Start the CPU daemon to update the CPU usage."""
     try:
         controller = EpomakerController(dry_run=False)
@@ -126,9 +127,26 @@ def start_daemon() -> None:
             if not controller.open_device():
                 click.echo("Failed to open device.")
                 return
-            cpu_usage = psutil.cpu_percent(interval=1)
+            # Get CPU usage
+            cpu_usage = round(psutil.cpu_percent(interval=1))
             click.echo(f"CPU Usage: {cpu_usage}%")
             controller.send_cpu(int(cpu_usage), from_daemon=True)
+
+            # Get device temperature using the provided key
+            try:
+                temps = psutil.sensors_temperatures()
+                if temp_key in temps:
+                    cpu_temp = temps[temp_key][0].current
+                    rounded_cpu_temp = round(cpu_temp)
+                    click.echo(f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C")
+                    controller.send_temperature(rounded_cpu_temp)
+                else:
+                    available_keys = list(temps.keys())
+                    click.echo(f"Temperature key '{temp_key}' not found. Available keys: {available_keys}")
+            except AttributeError:
+                click.echo("Temperature monitoring not supported on this system.")
+
+
             controller.close_device()
 
             time.sleep(3)
@@ -136,5 +154,18 @@ def start_daemon() -> None:
         click.echo("Daemon interrupted by user.")
     except Exception as e:
         click.echo(f"Failed to start daemon: {e}")
+
+
+@cli.command()
+def list_temp_devices() -> None:
+    """List available temperature devices."""
+    try:
+        temps = psutil.sensors_temperatures()
+        available_keys = list(temps.keys())
+        click.echo(f"Available temperature keys: {available_keys}")
+    except AttributeError:
+        click.echo("Temperature monitoring not supported on this system.")
+
+
 if __name__ == "__main__":
     cli()
