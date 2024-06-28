@@ -1,14 +1,6 @@
-"""Command-line interface."""
+# src/epomakercontroller/__main__.py
 
-import click
-from epomakercontroller import *
-
-
-@click.command()
-@click.version_option()
-def main() -> None:
-    """Epomakercontroller."""
-
+from .cli import cli
 
 if __name__ == "__main__":
-    main(prog_name="EpomakerController")  # pragma: no cover
+    cli()
