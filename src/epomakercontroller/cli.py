@@ -158,11 +158,20 @@ def start_daemon(temp_key: str) -> None:
 
 @cli.command()
 def list_temp_devices() -> None:
-    """List available temperature devices."""
+    """List available temperature devices with detailed information."""
     try:
         temps = psutil.sensors_temperatures()
-        available_keys = list(temps.keys())
-        click.echo(f"Available temperature keys: {available_keys}")
+        if not temps:
+            click.echo("No temperature sensors found.")
+            return
+
+        for key, entries in temps.items():
+            click.echo(f"\nTemperature key: {key}")
+            for entry in entries:
+                click.echo(f"  Label: {entry.label or 'N/A'}")
+                click.echo(f"  Current: {entry.current}°C")
+                click.echo(f"  High: {entry.high or 'N/A'}°C")
+                click.echo(f"  Critical: {entry.critical or 'N/A'}°C")
     except AttributeError:
         click.echo("Temperature monitoring not supported on this system.")
 
