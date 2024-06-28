@@ -127,6 +127,9 @@ def start_daemon(temp_key: str | None) -> None:
             if not controller.open_device():
                 click.echo("Failed to open device.")
                 return
+            # Set current time and date
+            controller.send_time()
+
             # Get CPU usage
             cpu_usage = round(psutil.cpu_percent(interval=1))
             click.echo(f"CPU Usage: {cpu_usage}%")

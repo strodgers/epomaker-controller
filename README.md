@@ -99,9 +99,10 @@ epomakercontroller start-daemon k10temp
 Alternatively leave the label blank to disable and only do CPU usage:
 ```console
 epomakercontroller start-daemon
-
-
 ```
+
+The daemon will also update the date and time once when it starts
+
 ## Contributing
 
 Contributions are very welcome.
