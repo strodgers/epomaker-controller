@@ -8,7 +8,7 @@ from epomakercontroller.commands import (
 )
 from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profile
 from epomakercontroller import EpomakerController
-from datetime import datetime
+import psutil
 
 @click.group()
 def cli() -> None:
@@ -117,5 +117,24 @@ def send_cpu(cpu: int) -> None:
     except Exception as e:
         click.echo(f"Failed to send CPU usage: {e}")
 
+@cli.command()
+def start_daemon() -> None:
+    """Start the CPU daemon to update the CPU usage."""
+    try:
+        controller = EpomakerController(dry_run=False)
+        while True:
+            if not controller.open_device():
+                click.echo("Failed to open device.")
+                return
+            cpu_usage = psutil.cpu_percent(interval=1)
+            click.echo(f"CPU Usage: {cpu_usage}%")
+            controller.send_cpu(int(cpu_usage), from_daemon=True)
+            controller.close_device()
+
+            time.sleep(3)
+    except KeyboardInterrupt:
+        click.echo("Daemon interrupted by user.")
+    except Exception as e:
+        click.echo(f"Failed to start daemon: {e}")
 if __name__ == "__main__":
     cli()
