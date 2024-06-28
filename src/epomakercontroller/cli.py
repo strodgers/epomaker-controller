@@ -80,13 +80,12 @@ def cycle_light_modes() -> None:
         click.echo(f"Failed to cycle light modes: {e}")
 
 @cli.command()
-@click.option('--datetime', 'dt', default=datetime.now(), help='Date and time to send to the device.')
-def send_time(dt: datetime) -> None:
+def send_time() -> None:
     """Send the current time to the Epomaker device."""
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
-            controller.send_time(dt)
+            controller.send_time()
             click.echo("Time sent successfully.")
         controller.close_device()
     except Exception as e:

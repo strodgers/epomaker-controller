@@ -1,5 +1,6 @@
 from datetime import datetime
 import time
+import hid
 
 from .commands import (
     EpomakerCommand,
