@@ -1,6 +1,6 @@
 from datetime import datetime
 import time
-import hid
+from typing import Range
 
 from .commands import (
     EpomakerCommand,
@@ -80,6 +80,10 @@ class EpomakerController:
                 self.device.send_feature_report(packet.get_all_bytes())
             time.sleep(sleep_time)
 
+    @staticmethod
+    def _assert_range(value: int, r: range = range(0, 100)) -> bool:
+        return value in r
+
     def send_image(self, image_path: str) -> None:
         """
         Sends an image to the HID device.
@@ -99,6 +103,8 @@ class EpomakerController:
         """
         Sends the temperature to the HID device.
         """
+        if not self._assert_range(temperature):
+            raise ValueError("Temperature must be in range 0-100")
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         self._send_command(temperature_command)
 
@@ -106,6 +112,8 @@ class EpomakerController:
         """
         Sends the CPU percentage to the HID device.
         """
+        if not self._assert_range(cpu):
+            raise ValueError("CPU percentage must be in range 0-100")
         cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
         self._send_command(cpu_command)
 
