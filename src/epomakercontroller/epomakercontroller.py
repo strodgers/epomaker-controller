@@ -54,9 +54,12 @@ class EpomakerController:
             return True
         try:
             self.device.open(self.vendor_id, self.product_id)
+            self.device.set_nonblocking(1)
             print(f"Manufacturer: {self.device.get_manufacturer_string()}")
             print(f"Product: {self.device.get_product_string()}")
-            print(f"Serial No: {self.device.get_serial_number_string()}")
+            # Commenting this out as it's always some symbol
+            # print(f"Serial No: {self.device.get_serial_number_string()}")
+            print("WARNING: If this program errors out or you cancel early, the keyboard may become unresponsive. It should work fine again if you unplug and plug it back in!")
             return True
         except Exception as e:
             print(f"Failed to open device: {e}")
@@ -74,7 +77,7 @@ class EpomakerController:
             if self.dry_run:
                 print(f"Dry run: skipping command send: {packet!r}")
             elif self.device:
-                self.device.send_feature_report(packet)
+                self.device.send_feature_report(packet.get_all_bytes())
             time.sleep(sleep_time)
 
     def send_image(self, image_path: str) -> None:
