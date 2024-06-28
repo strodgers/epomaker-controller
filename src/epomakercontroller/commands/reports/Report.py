@@ -76,6 +76,13 @@ class Report:
             return 0
         return len(self.report_bytearray)
 
+    def get_all_bytes(self) -> bytearray | None:
+        assert (
+            self.report_bytearray is not None
+        ), "Report bytearray must be set before getting all bytes."
+        return self.report_bytearray
+
+
 
 @dataclasses.dataclass()
 class ReportCollection:
