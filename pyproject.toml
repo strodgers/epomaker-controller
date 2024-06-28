@@ -16,7 +16,7 @@ classifiers = [
 Changelog = "https://github.com/imp3ga/EpomakerController/releases"
 
 [tool.poetry.dependencies]
-python = "^3.7"
+python = "^3.8"
 click = ">=8.0.1"
 
 [tool.poetry.dev-dependencies]
@@ -46,7 +46,7 @@ xdoctest = {extras = ["colors"], version = ">=0.15.10"}
 myst-parser = {version = ">=0.16.1"}
 
 [tool.poetry.scripts]
-EpomakerController = "EpomakerController.__main__:main"
+epomakercontroller = "epomakercontroller.cli:cli"
 
 [tool.coverage.paths]
 source = ["src", "*/site-packages"]
