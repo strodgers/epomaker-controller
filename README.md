@@ -13,7 +13,7 @@ This project is still very rough around the edges
 
 ## Requirements
 
-- See requirements.txt
+I am using poetry v1.7.1 to install the package
 
 ## Installation
 
@@ -44,8 +44,8 @@ Options:
 Commands:
   cycle-light-modes  Cycle through the light modes.
   list-temp-devices  List available temperature devices with detailed...
-  send-cpu           Send the CPU usage percentage to the Epomaker device.
-  send-temperature   Send the temperature to the Epomaker device.
+  send-cpu           Send CPU usage percentage to the Epomaker device.
+  send-temperature   Send a temperature to the Epomaker device.
   send-time          Send the current time to the Epomaker device.
   set-rgb-all-keys   Set RGB colour for all keys.
   start-daemon       Start the CPU daemon to update the CPU usage.

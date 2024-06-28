@@ -94,7 +94,7 @@ def send_time() -> None:
 @cli.command()
 @click.argument('temperature', type=int)
 def send_temperature(temperature: int) -> None:
-    """Send the temperature to the Epomaker device."""
+    """Send temperature to the Epomaker screen."""
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -107,7 +107,7 @@ def send_temperature(temperature: int) -> None:
 @cli.command()
 @click.argument('cpu', type=int)
 def send_cpu(cpu: int) -> None:
-    """Send the CPU usage percentage to the Epomaker device."""
+    """Send CPU usage percentage to the Epomaker screen."""
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -120,7 +120,7 @@ def send_cpu(cpu: int) -> None:
 @cli.command()
 @click.argument('temp_key', type=str, required=False)
 def start_daemon(temp_key: str | None) -> None:
-    """Start the CPU daemon to update the CPU usage and optionally a sensor temperature."""
+    """Start a daemon to update the CPU usage and optionally a temperature."""
     try:
         controller = EpomakerController(dry_run=False)
         while True:
@@ -162,7 +162,7 @@ def start_daemon(temp_key: str | None) -> None:
 
 @cli.command()
 def list_temp_devices() -> None:
-    """List available temperature devices with detailed information."""
+    """List available temperature devices."""
     try:
         temps = psutil.sensors_temperatures()
         if not temps:
