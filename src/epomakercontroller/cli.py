@@ -34,7 +34,7 @@ def upload_image(image_path: str) -> None:
 @click.argument('g', type=int)
 @click.argument('b', type=int)
 def set_rgb_all_keys(r: int, g: int, b: int)  -> None:
-    """Set RGB color for all keys."""
+    """Set RGB colour for all keys."""
     try:
         mapping = EpomakerKeyRGBCommand.KeyMap()
         for key in ALL_KEYBOARD_KEYS:

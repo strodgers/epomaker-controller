@@ -86,7 +86,7 @@ def assert_colour_close(
     delta: int = 8,
     debug_str: str = "",
 ) -> None:
-    """Asserts that two colors are within an acceptable delta of each other.
+    """Asserts that two colours are within an acceptable delta of each other.
     This is necessary because the RGB565 encoding and decoding process is lossy.
     """
     for o, d in zip(original, decoded):
@@ -242,7 +242,7 @@ def test_encode_image_command() -> None:
             == d[: command.report_data_header_length]
         )
 
-        # Iterate over byte pairs and assert the color difference
+        # Iterate over byte pairs and assert the colour difference
         j = 0
         for d_colour, t_colour in zip(
             d[command.report_data_header_length :],
