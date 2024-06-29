@@ -1,19 +1,16 @@
 [tool.poetry]
 name = "EpomakerController"
-version = "0.0.0"
+version = "0.0.1"
 description = "Epomakercontroller"
 authors = ["Sam Rodgers <samueltrodgers@duck.com>"]
 license = "MIT"
 readme = "README.md"
-homepage = "https://github.com/imp3ga/EpomakerController"
-repository = "https://github.com/imp3ga/EpomakerController"
+homepage = "https://github.com/strodgers/EpomakerController"
+repository = "https://github.com/strodgers/EpomakerController"
 documentation = "https://EpomakerController.readthedocs.io"
-classifiers = [
-    "Development Status :: 1 - Planning",
-]
 
 [tool.poetry.urls]
-Changelog = "https://github.com/imp3ga/EpomakerController/releases"
+Changelog = "https://github.com/strodgers/EpomakerController/releases"
 
 [tool.poetry.dependencies]
 python = "^3.10"
