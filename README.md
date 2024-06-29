@@ -1,4 +1,5 @@
 # Epomakercontroller
+![PyPI](https://img.shields.io/pypi/v/EpomakerController.svg)
 
 Some scripts to help interface with an Epomaker RT100 (will probably also work with TH80)
 
