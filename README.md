@@ -1,9 +1,9 @@
 # Epomakercontroller
 ![PyPI](https://img.shields.io/pypi/v/EpomakerController.svg)
 
-Some scripts to help interface with an Epomaker RT100 (will probably also work with TH80)
+A CLI tool to interact with an [Epomaker RT100](https://epomaker.com/products/epomaker-rt100) keyboard that comes with a small screen attached. Some features will probably also work with the TH80.
 
-This project is still very rough around the edges
+This project is still very rough around the edges!
 
 ## Features
 
@@ -11,23 +11,31 @@ This project is still very rough around the edges
 - Send arbitrary numbers to the CPU and Temeprature displays on the screen
 - Set RGB patterns on the keyboard
 - Set individual key colours
+- Start a daemon to continuously update the CPU and temperature on the screen
 
 ## Requirements
 
-I am using poetry v1.7.1 to install the package
+I am using poetry v1.7.1
 
 ## Installation
-
-You can install _Epomakercontroller_ via poetry
-
 I suggest using conda or a python virtual env, tested on python 3.10 and 3.12:
+
+_Epomakercontroller_ package is available on [PyPi](https://pypi.org/project/EpomakerController/)
+
+```console
+$ python3.10 -m venv epomaker
+$ source epomaker/bin/activate
+$ pip install EpomakerController
+```
+
+You can also install _Epomakercontroller_ via poetry
 
 ```console
 $ sudo apt install poetry
 $ git clone https://github.com/strodgers/epomaker-controller
 $ cd epomaker-controller
-$ python3.10 -m venv venv
-$ source venv/bin/activate
+$ python3.10 -m venv epomaker
+$ source epomaker/bin/activate
 $ poetry install
 ```
 
