@@ -1,4 +1,5 @@
 # src/epomakercontroller/__main__.py
+"""Entry point for the CLI."""
 
 from .cli import cli
 

@@ -1,3 +1,5 @@
+"""Command for sending images to the Epomaker keyboard."""
+
 import cv2
 import numpy as np
 
@@ -11,6 +13,7 @@ class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
 
     def __init__(self) -> None:
+        """Initializes the command."""
         initialization_data = "a5000100f4da008b0000a2ad"
         self.report_data_header_length = 8
         structure = CommandStructure(
@@ -22,6 +25,11 @@ class EpomakerImageCommand(EpomakerCommand):
         super().__init__(initial_report, structure)
 
     def get_data_reports(self) -> list[ReportWithData]:
+        """Returns the data reports.
+
+        Returns:
+            list[ReportWithData]: The data reports.
+        """
         return [r for r in self.reports if isinstance(r, ReportWithData)]
 
     @staticmethod
@@ -50,11 +58,14 @@ class EpomakerImageCommand(EpomakerCommand):
         return (r, g, b)
 
     def encode_image(self, image_path: str) -> None:
-        """
-        Encode an image to 16-bit RGB565 according to IMAGE_DIMENSIONS and accounting for packet
-        headers.
+        """Encode an image to 16-bit RGB565.
 
-        The image is also rotated and flipped since this seems to be what the keyboard is expecting.
+        Encode an image to 16-bit RGB565 according to IMAGE_DIMENSIONS and accounting
+        for packet headers. The image is also rotated and flipped since this seems to be
+        what the keyboard is expecting.
+
+        Args:
+            image_path (str): The path to the image file.
         """
         image = cv2.imread(image_path)
         image = cv2.resize(image, IMAGE_DIMENSIONS)

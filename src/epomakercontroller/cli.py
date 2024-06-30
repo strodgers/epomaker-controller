@@ -1,4 +1,5 @@
 # src/epomakercontroller/cli.py
+"""Simple CLI for the EpomakerController package."""
 
 import time
 import click
@@ -10,15 +11,21 @@ from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profil
 from epomakercontroller import EpomakerController
 import psutil
 
+
 @click.group()
 def cli() -> None:
-    """EpomakerController CLI."""
+    """A simple CLI for the EpomakerController."""
     pass
 
+
 @cli.command()
-@click.argument('image_path', type=click.Path(exists=True))
+@click.argument("image_path", type=click.Path(exists=True))
 def upload_image(image_path: str) -> None:
-    """Upload an image to the Epomaker device."""
+    """Upload an image to the Epomaker device.
+
+    Args:
+        image_path (str): The path to the image file to upload.
+    """
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -29,12 +36,19 @@ def upload_image(image_path: str) -> None:
     except Exception as e:
         click.echo(f"Failed to upload image: {e}")
 
+
 @cli.command()
-@click.argument('r', type=int)
-@click.argument('g', type=int)
-@click.argument('b', type=int)
-def set_rgb_all_keys(r: int, g: int, b: int)  -> None:
-    """Set RGB colour for all keys."""
+@click.argument("r", type=int)
+@click.argument("g", type=int)
+@click.argument("b", type=int)
+def set_rgb_all_keys(r: int, g: int, b: int) -> None:
+    """Set RGB colour for all keys.
+
+    Args:
+        r (int): The red value (0-255).
+        g (int): The green value (0-255).
+        b (int): The blue value (0-255).
+    """
     try:
         mapping = EpomakerKeyRGBCommand.KeyMap()
         for key in ALL_KEYBOARD_KEYS:
@@ -47,6 +61,7 @@ def set_rgb_all_keys(r: int, g: int, b: int)  -> None:
         controller.close_device()
     except Exception as e:
         click.echo(f"Failed to set RGB for all keys: {e}")
+
 
 @cli.command()
 def cycle_light_modes() -> None:
@@ -70,7 +85,9 @@ def cycle_light_modes() -> None:
             )
             command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
             controller._send_command(command)
-            click.echo(f"[{counter}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}")
+            click.echo(
+                f"[{counter}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}"
+            )
             time.sleep(5)
             counter += 1
 
@@ -78,6 +95,7 @@ def cycle_light_modes() -> None:
         click.echo("Cycled through all light modes successfully.")
     except Exception as e:
         click.echo(f"Failed to cycle light modes: {e}")
+
 
 @cli.command()
 def send_time() -> None:
@@ -91,10 +109,15 @@ def send_time() -> None:
     except Exception as e:
         click.echo(f"Failed to send time: {e}")
 
+
 @cli.command()
-@click.argument('temperature', type=int)
+@click.argument("temperature", type=int)
 def send_temperature(temperature: int) -> None:
-    """Send temperature to the Epomaker screen."""
+    """Send temperature to the Epomaker screen.
+
+    Args:
+        temperature (int): The temperature value in C (0-100).
+    """
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -104,10 +127,15 @@ def send_temperature(temperature: int) -> None:
     except Exception as e:
         click.echo(f"Failed to send temperature: {e}")
 
+
 @cli.command()
-@click.argument('cpu', type=int)
+@click.argument("cpu", type=int)
 def send_cpu(cpu: int) -> None:
-    """Send CPU usage percentage to the Epomaker screen."""
+    """Send CPU usage percentage to the Epomaker screen.
+
+    Args:
+        cpu (int): The CPU usage percentage (0-100).
+    """
     try:
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
@@ -117,10 +145,15 @@ def send_cpu(cpu: int) -> None:
     except Exception as e:
         click.echo(f"Failed to send CPU usage: {e}")
 
+
 @cli.command()
-@click.argument('temp_key', type=str, required=False)
+@click.argument("temp_key", type=str, required=False)
 def start_daemon(temp_key: str | None) -> None:
-    """Start a daemon to update the CPU usage and optionally a temperature."""
+    """Start a daemon to update the CPU usage and optionally a temperature.
+
+    Args:
+        temp_key (str): A label corresponding to the device to monitor.
+    """
     try:
         controller = EpomakerController(dry_run=False)
         while True:
@@ -142,14 +175,18 @@ def start_daemon(temp_key: str | None) -> None:
                     if temp_key in temps:
                         cpu_temp = temps[temp_key][0].current
                         rounded_cpu_temp = round(cpu_temp)
-                        click.echo(f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C")
+                        click.echo(
+                            f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C"
+                        )
                         controller.send_temperature(rounded_cpu_temp)
                     else:
                         available_keys = list(temps.keys())
-                        click.echo(f"Temperature key '{temp_key}' not found. Available keys: {available_keys}")
+                        click.echo(
+                            (f"Temperature key {temp_key!r} not found."
+                             f"Available keys: {available_keys}")
+                        )
                 except AttributeError:
                     click.echo("Temperature monitoring not supported on this system.")
-
 
             controller.close_device()
 

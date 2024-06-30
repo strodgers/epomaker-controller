@@ -1,3 +1,5 @@
+"""Command for setting the time on the keyboard."""
+
 from datetime import datetime
 from .EpomakerCommand import EpomakerCommand
 from .reports.Report import Report
@@ -7,15 +9,24 @@ class EpomakerTimeCommand(EpomakerCommand):
     """A command for setting the time on the keyboard."""
 
     def __init__(self, time: datetime) -> None:
+        """Initializes the command with the time value.
+
+        Args:
+            time (datetime): The time value.
+        """
         initialization_data = "28000000000000d7" + self._format_time(time)
         initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report)
 
     @staticmethod
     def _format_time(time: datetime) -> str:
-        """
-        Gets the current time and formats it into the required byte string format.
-        Returns the formatted command string to send to the device.
+        """Gets the current time and formats it into the required byte string format.
+
+        Args:
+            time (datetime): The time to format.
+
+        Returns:
+            str: The formatted command string.
         """
         print("Using:", time)
 

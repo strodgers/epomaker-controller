@@ -25,23 +25,26 @@ DISPLAY = False
 
 @pytest.fixture
 def runner() -> CliRunner:
-    """Fixture for invoking command-line interfaces."""
+    """Fixture for invoking command-line interfaces.
+
+    Returns:
+        CliRunner: The Click CLI runner.
+    """
     return CliRunner()
 
 
-# def test_main_succeeds(runner: CliRunner) -> None:
-#     """It exits with a status code of zero."""
-#     result = runner.invoke(__main__.main)
-#     assert result.exit_code == 0
-
-
-class test_data:
+class TestData:
     """Test data for the EpomakerController."""
 
-    def __init__(
-        self,
-        test_name: str,
-    ) -> None:
+    def __init__(self, test_name: str) -> None:
+        """Initializes the TestData object.
+
+        Args:
+            test_name (str): The name of the test.
+
+        Raises:
+            ValueError: If the test data file cannot be read.
+        """
         self.name = test_name
         test_file = f"tests/data/{test_name}.txt"
         self.command_data = []
@@ -58,10 +61,23 @@ class test_data:
         assert len(self.command_data) > 0
 
     def __iter__(self) -> Iterator[bytes]:
+        """Iterates over the command data.
+
+        Yields:
+            Iterator[bytes]: The command data.
+        """
         for data in self.command_data:
             yield data
 
     def __getitem__(self, index: int) -> bytes:
+        """Gets a command data byte by index.
+
+        Args:
+            index (int): The index of the command data byte.
+
+        Returns:
+            bytes: The command data byte.
+        """
         return self.command_data[index]
 
 
@@ -77,7 +93,7 @@ all_tests = [
     "_decode_rgb565-calibration-image-bytes",
 ]
 
-all_test_data = {test: test_data(test) for test in all_tests}
+all_test_data = {test: TestData(test) for test in all_tests}
 
 
 def assert_colour_close(
@@ -87,16 +103,30 @@ def assert_colour_close(
     debug_str: str = "",
 ) -> None:
     """Asserts that two colours are within an acceptable delta of each other.
+
     This is necessary because the RGB565 encoding and decoding process is lossy.
+
+    Args:
+        original (tuple[int, int, int]): The original colour.
+        decoded (tuple[int, int, int]): The decoded colour.
+        delta (int): The acceptable difference. Defaults to 8.
+        debug_str (str): The debug string. Defaults to "".
     """
-    for o, d in zip(original, decoded):
+    for o, d in zip(original, decoded, strict=True):
         assert (
             abs(o - d) <= delta
         ), f"{debug_str} Original: {original}, Decoded: {decoded}, Delta: {delta}"
 
 
 def pair_bytes(data: bytes) -> list[bytes]:
-    """Combine bytes into 2 bytes"""
+    """Combine bytes into 2 bytes.
+
+    Args:
+        data (bytes): The data to combine.
+
+    Returns:
+        list[bytes]: The combined bytes.
+    """
     assert len(data) % 2 == 0, "Data must be of even length"
     return [data[i : i + 2] for i in range(0, len(data), 2)]
 
@@ -166,61 +196,31 @@ def test_read_and_decode_bytes() -> None:
     pass
 
 
-# def test_encode_image() -> None:
-#     image_path = "tests/data/calibration.png"
-#     image = cv2.imread(image_path)
-#     image = cv2.resize(image, IMAGE_DIMENSIONS)
-#     image = cv2.flip(image, 0)
-#     image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
-
-#     image_16bit = np.zeros((IMAGE_DIMENSIONS[0], IMAGE_DIMENSIONS[1]), dtype=np.uint16)
-#     try:
-#         for y in range(image.shape[0]):
-#             for x in range(image.shape[1]):
-#                 r, g, b = image[y, x]
-#                 image_16bit[y, x] = EpomakerImageCommand._encode_rgb565(r, g, b)
-#     except Exception as e:
-#         print(f"Exception while converting image: {e}")
-
-#     image_data = ""
-#     for row in image_16bit:
-#         image_data += ''.join([hex(val)[2:].zfill(4) for val in row])
-
-#     # 4 bytes per pixel (16 bits)
-#     assert len(image_data) == (IMAGE_DIMENSIONS[0] * IMAGE_DIMENSIONS[1]) * 4
-#     buffer_length = 128 - len(image_data_prefix[0])
-#     with open("image_data.txt", "w", encoding="utf-8") as file:
-#         chunks = math.floor(len(image_data) / buffer_length)
-#         i = 0
-#         while i < chunks:
-#             image_byte_segment = image_data[i*buffer_length:(i+1)*buffer_length]
-#             file.write(f"{image_byte_segment}\n")
-#             i += 1
-#         # Remainder of the data
-#         image_byte_segment = EpomakerController._pad_command(
-#             image_data[i*buffer_length:], buffer_length
-#             )
-#         file.write(f"{image_byte_segment}\n")
-#     # TODO: Assertions
-
-# def test_send_imagfe() -> None:
-#     controller = EpomakerController()
-#     controller.send_image("/home/sam/Documents/keyboard-usb-sniff/EpomakerController/EpomakerController/tests/data/calibration.png")
-#     pass
-
-
 def byte_wise_difference(bytes1: bytes, bytes2: bytes) -> list[int]:
+    """Calculate byte-wise difference between two bytes objects.
+
+    Args:
+        bytes1 (bytes): The first bytes object.
+        bytes2 (bytes): The second bytes object.
+
+    Raises:
+        ValueError: If the bytes objects are of different lengths.
+
+    Returns:
+        list[int]: The list of differences.
+    """
     # Ensure the bytes objects are of the same length
     if len(bytes1) != len(bytes2):
         raise ValueError("Bytes objects must be of the same length")
 
     # Calculate the byte-wise difference
-    differences = [abs(b1 - b2) for b1, b2 in zip(bytes1, bytes2)]
+    differences = [abs(b1 - b2) for b1, b2 in zip(bytes1, bytes2, strict=True)]
 
     return differences
 
 
 def test_encode_image_command() -> None:
+    """Test encoding an image command."""
     command = EpomakerImageCommand.EpomakerImageCommand()
     this_test_data = all_test_data["EpomakerImageCommand-upload-calibration-image"]
     command.encode_image("tests/data/calibration.png")
@@ -229,7 +229,7 @@ def test_encode_image_command() -> None:
     assert command.reports[0].report_bytearray == this_test_data.command_data[0]
 
     i = 0
-    for t, d in zip(this_test_data, command):
+    for t, d in zip(this_test_data, command, strict=True):
         if i == 0:
             i += 1
             continue
@@ -247,6 +247,7 @@ def test_encode_image_command() -> None:
         for d_colour, t_colour in zip(
             d[command.report_data_header_length :],
             t[command.report_data_header_length :],
+            strict=True,
         ):
             # Convert byte pair to integer
             # Assert the colour difference
@@ -264,6 +265,7 @@ def test_encode_image_command() -> None:
 
 
 def test_checksum() -> None:
+    """Test checksum calculation for reports."""
     # Some commands use the 8th bit as the checksum
     this_test_data = all_test_data["EpomakerCommand-cycle-light-modes-command"]
     checkbit = 8
@@ -271,7 +273,9 @@ def test_checksum() -> None:
         checksum = Report.Report._calculate_checksum(t[:checkbit])
         assert checksum == t[checkbit].to_bytes(
             1, byteorder="big"
-        ), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
+        ), f"""{i} > Checksum: {checksum!r},
+        Buffer: {hex(t[checkbit])},
+        test {this_test_data.name}"""
 
     # Some commands use the 7th bit as the checksum
     checkbit = 7
@@ -285,17 +289,26 @@ def test_checksum() -> None:
             checksum = Report.Report._calculate_checksum(t[:checkbit])
             assert checksum == t[checkbit].to_bytes(
                 1, byteorder="big"
-            ), f"{i} > Checksum: {checksum!r}, Buffer: {hex(t[checkbit])}, test {this_test_data.name}"
+            ), (f"{i} > Checksum: {checksum!r},"
+                "Buffer: {hex(t[checkbit])},"
+                "test {this_test_data.name}")
 
 
 def compare_bytes_iterable(a: Iterable[bytes], b: Iterable[bytes]) -> None:
-    for i, (t, d) in enumerate(zip(a, b)):
+    """Compare two iterables of bytes.
+
+    Args:
+        a (Iterable[bytes]): The first iterable.
+        b (Iterable[bytes]): The second iterable.
+    """
+    for i, (t, d) in enumerate(zip(a, b, strict=True)):
         if t != d:
-            for j, (x, y) in enumerate(zip(t, d)):
+            for j, (x, y) in enumerate(zip(t, d, strict=True)):
                 assert x == y, f"Byte in row {i}, position {j}: {x:02x} != {y:02x}"
 
 
 def test_set_rgb_all_keys() -> None:
+    """Test setting RGB values for all keys."""
     this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
     mapping = EpomakerKeyRGBCommand.KeyMap()
     for key in ALL_KEYBOARD_KEYS:
@@ -307,6 +320,7 @@ def test_set_rgb_all_keys() -> None:
 
 
 def test_set_rgb_multiple_frames() -> None:
+    """Test setting RGB values for multiple frames."""
     this_test_data = all_test_data["EpomakerKeyRGBCommand-numrow-keys-different-frames"]
     frames = []
 
@@ -330,6 +344,7 @@ def test_set_rgb_multiple_frames() -> None:
 
 
 def test_set_light_mode() -> None:
+    """Test setting the light mode."""
     this_test_data = all_test_data["EpomakerCommand-cycle-light-modes-command"]
     profile = Profile(
         mode=Profile.Mode.ALWAYS_ON,
