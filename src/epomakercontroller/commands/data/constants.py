@@ -1,6 +1,10 @@
+"""Constants for the EpomakerController commands module.
+
+This module defines various constants used in the EpomakerController commands.
+"""
+
 from enum import Enum
 from dataclasses import dataclass
-from typing import Iterator
 
 BUFF_LENGTH = 128 // 2  # 128 bytes / 2 bytes per int
 IMAGE_DIMENSIONS = (162, 173)
@@ -8,9 +12,14 @@ IMAGE_DIMENSIONS = (162, 173)
 
 @dataclass(frozen=True)
 class Profile:
-    """Thanks to https://gitlab.com/CalcProgrammer1/OpenRGB/-/blob/master/Controllers/EpomakerController/EpomakerController.h"""
+    """Profile settings for the Epomaker keyboard.
+
+    Thanks to https://gitlab.com/CalcProgrammer1/OpenRGB/-/blob/master/Controllers/
+    EpomakerController/EpomakerController.h
+    """
 
     class Mode(Enum):
+        """Modes for the Epomaker keyboard."""
         ALWAYS_ON = 0x01
         DYNAMIC_BREATHING = 0x02
         SPECTRUM_CYCLE = 0x03
@@ -32,21 +41,25 @@ class Profile:
         LIGHT_SHADOW = 0x15
 
     class Speed(Enum):
+        """Speed settings for the Epomaker keyboard."""
         MIN = 0x00
         MAX = 0x05
         MAX_SPECIAL = 0x04
         DEFAULT = 0x04
 
     class Brightness(Enum):
+        """Brightness settings for the Epomaker keyboard."""
         MIN = 0x00
         MAX = 0x04
         DEFAULT = 0x04
 
     class Dazzle(Enum):
+        """Dazzle settings for the Epomaker keyboard."""
         OFF = 0x07
         ON = 0x08
 
     class Option(Enum):
+        """Option settings for the Epomaker keyboard."""
         OFF = 0x00
         ON = 0x01
         DEFAULT = 0x00
@@ -73,6 +86,7 @@ class Profile:
 
 @dataclass(frozen=True)
 class KeyboardKey(Enum):
+    """Enumeration for the keys on the Epomaker keyboard."""
     ESC = 0
     BACKQUOTE = 1
     TAB = 2
