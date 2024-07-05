@@ -5,6 +5,8 @@ A CLI tool to interact with an [Epomaker RT100](https://epomaker.com/products/ep
 
 This project is still very rough around the edges!
 
+NOTE!!!: This currently only works over the USB connection!
+
 ## Features
 
 - Upload images to the RT100 screen
@@ -111,6 +113,11 @@ epomakercontroller start-daemon
 ```
 
 The daemon will also update the date and time once when it starts
+
+## TODO
+- Support bluetooth/2.4Ghz
+- Upload GIFs
+- Macros
 
 ## Contributing
 
