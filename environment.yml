@@ -8,7 +8,6 @@ dependencies:
   - pytest
   - numpy
   - matplotlib
-  - opencv
   - click
   - hidapi
   - pip
@@ -29,7 +28,7 @@ dependencies:
       - mccabe==0.7.0
       - mypy==1.8.0
       - mypy-extensions==1.0.0
-      - opencv-python==4.9.0.80
+      - opencv-python-headless==4.10.0.82
       - packaging==23.2
       - pathspec==0.12.1
       - pillow==10.2.0
