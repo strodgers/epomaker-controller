@@ -16,7 +16,7 @@ jobs:
       with:
         miniconda-version: "latest"
         auto-update-conda: true
-        python-version: 3.10
+        python-version: 3.11
         channels: conda-forge, defaults
 
     - name: Add conda to system path
@@ -32,13 +32,6 @@ jobs:
         source activate test-env
         pip install poetry
         poetry install
-
-    # - name: Lint with flake8
-    #   run: |
-    #     source activate test-env
-    #     conda install flake8 -y
-    #     flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
-    #     flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
     - name: Test with pytest
       run: |
