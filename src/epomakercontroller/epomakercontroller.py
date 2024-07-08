@@ -97,7 +97,7 @@ class EpomakerController:
             if device_path is None:
                 available_devices = [device["interface_number"] for device in device_list]
                 raise ValueError(
-                    f"No device found with interface number {self.interface_number}"
+                    f"No device found with interface number {self.interface_number}\n"
                     f"Available devices: {available_devices}"
                 )
 
