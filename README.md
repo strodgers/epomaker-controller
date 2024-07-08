@@ -47,19 +47,20 @@ $ poetry install
 $ epomakercontroller
 Usage: epomakercontroller [OPTIONS] COMMAND [ARGS]...
 
-  EpomakerController CLI.
+  A simple CLI for the EpomakerController.
 
 Options:
   --help  Show this message and exit.
 
 Commands:
   cycle-light-modes  Cycle through the light modes.
-  list-temp-devices  List available temperature devices with detailed...
-  send-cpu           Send CPU usage percentage to the Epomaker device.
-  send-temperature   Send a temperature to the Epomaker device.
+  dev                Various dev tools.
+  list-temp-devices  List available temperature devices.
+  send-cpu           Send CPU usage percentage to the Epomaker screen.
+  send-temperature   Send temperature to the Epomaker screen.
   send-time          Send the current time to the Epomaker device.
   set-rgb-all-keys   Set RGB colour for all keys.
-  start-daemon       Start the CPU daemon to update the CPU usage.
+  start-daemon       Start a daemon to update the CPU usage and...
   upload-image       Upload an image to the Epomaker device.
 ```
 
@@ -113,6 +114,58 @@ epomakercontroller start-daemon
 ```
 
 The daemon will also update the date and time once when it starts
+
+### Note about interface numbers
+
+I only have my own keyboard to go by, but as far as I can tell there are 3 available HID
+interfaces available when the keyboard is plugged in over USB. All 3 of them will work with
+this controller HOWEVER using interface 0 interferes with regular usage of the keyboard (eg typing).
+
+I have found interface 1 to be the best to use, but some commands take an option for you to set the
+interface number manually if you need to eg:
+```console
+epomakercontroller start-daemon --interface 2
+```
+
+You can also print all the available information about the connected keyboard using the 'dev'
+command. Here is an example of the output from my own keyboard:
+```console
+epomakercontroller dev print_all_info
+Printing all available information about the connected keyboard.
+WARNING: If this program errors out or you cancel early, the keyboard
+              may become unresponsive. It should work fine again if you unplug and plug
+               it back in!
+[{'interface_number': 0,
+  'manufacturer_string': 'ROYUAN',
+  'path': b'5-2.3:1.0',
+  'product_id': 16400,
+  'product_string': 'RT100 Wired',
+  'release_number': 1281,
+  'serial_number': '',
+  'usage': 0,
+  'usage_page': 0,
+  'vendor_id': 12625},
+ {'interface_number': 1,
+  'manufacturer_string': 'ROYUAN',
+  'path': b'5-2.3:1.1',
+  'product_id': 16400,
+  'product_string': 'RT100 Wired',
+  'release_number': 1281,
+  'serial_number': '',
+  'usage': 0,
+  'usage_page': 0,
+  'vendor_id': 12625},
+ {'interface_number': 2,
+  'manufacturer_string': 'ROYUAN',
+  'path': b'5-2.3:1.2',
+  'product_id': 16400,
+  'product_string': 'RT100 Wired',
+  'release_number': 1281,
+  'serial_number': '',
+  'usage': 0,
+  'usage_page': 0,
+  'vendor_id': 12625}]
+```
 
 ## TODO
 - Support bluetooth/2.4Ghz
