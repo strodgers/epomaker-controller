@@ -20,7 +20,6 @@ from .commands.data.constants import BUFF_LENGTH
 
 VENDOR_ID = 0x3151
 PRODUCT_ID = 0x4010
-INTERFACE_NUMBER = 1
 
 
 class EpomakerController:
@@ -42,6 +41,7 @@ class EpomakerController:
 
     def __init__(
         self,
+        interface_number: int,
         vendor_id: int = VENDOR_ID,
         product_id: int = PRODUCT_ID,
         dry_run: bool = True,
@@ -49,10 +49,12 @@ class EpomakerController:
         """Initializes the EpomakerController object.
 
         Args:
+            interface_number (int): The interface number of the USB HID device to use.
             vendor_id (int): The vendor ID of the USB HID device.
             product_id (int): The product ID of the USB HID device.
             dry_run (bool): Whether to run in dry run mode (default: True).
         """
+        self.interface_number = interface_number
         self.vendor_id = vendor_id
         self.product_id = product_id
         self.device = hid.device()
@@ -63,8 +65,11 @@ class EpomakerController:
                it back in!"""
         )
 
-    def open_device(self) -> bool:
+    def open_device(self, only_info: bool = False) -> bool:
         """Opens the USB HID device and prints device information.
+
+        Args:
+            only_info (bool): Whether to only print device information and exit (default: False).
 
         Returns:
             bool: True if the device is opened successfully, False otherwise.
@@ -79,15 +84,21 @@ class EpomakerController:
             # Find the device with the specified interface number so we can open by path
             # This way we don't block usage of the keyboard whilst the device is open
             device_list = hid.enumerate(self.vendor_id, self.product_id)
+            if only_info:
+                import pprint
+                pprint.pprint(device_list)
+                return True
             device_path = None
             for device in device_list:
-                if device["interface_number"] == INTERFACE_NUMBER:
+                if device["interface_number"] == self.interface_number:
                     device_path = device["path"]
                     break
 
             if device_path is None:
+                available_devices = [device["interface_number"] for device in device_list]
                 raise ValueError(
-                    f"No device found with interface number {INTERFACE_NUMBER}"
+                    f"No device found with interface number {self.interface_number}"
+                    f"Available devices: {available_devices}"
                 )
 
             self.device = hid.device()
