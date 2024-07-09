@@ -6,6 +6,7 @@ for an Epomaker USB HID device.
 
 from datetime import datetime
 import time
+from typing import Any
 import hid
 
 from .commands import (
@@ -19,7 +20,8 @@ from .commands import (
 from .commands.data.constants import BUFF_LENGTH
 
 VENDOR_ID = 0x3151
-PRODUCT_ID = 0x4010
+# Some Epomaker keyboards seem to have have different product IDs
+PRODUCT_IDS = [0x4010, 0x4015]
 
 
 class EpomakerController:
@@ -43,7 +45,6 @@ class EpomakerController:
         self,
         interface_number: int,
         vendor_id: int = VENDOR_ID,
-        product_id: int = PRODUCT_ID,
         dry_run: bool = True,
     ) -> None:
         """Initializes the EpomakerController object.
@@ -56,9 +57,9 @@ class EpomakerController:
         """
         self.interface_number = interface_number
         self.vendor_id = vendor_id
-        self.product_id = product_id
         self.device = hid.device()
         self.dry_run = dry_run
+        self.device_list: list[dict[str, Any]] = []
         print(
             """WARNING: If this program errors out or you cancel early, the keyboard
               may become unresponsive. It should work fine again if you unplug and plug
@@ -80,22 +81,19 @@ class EpomakerController:
         if self.dry_run:
             print("Dry run: skipping device open")
             return True
-        try:
-            # Find the device with the specified interface number so we can open by path
-            # This way we don't block usage of the keyboard whilst the device is open
-            device_list = hid.enumerate(self.vendor_id, self.product_id)
-            if only_info:
-                import pprint
-                pprint.pprint(device_list)
-                return True
-            device_path = None
-            for device in device_list:
-                if device["interface_number"] == self.interface_number:
-                    device_path = device["path"]
-                    break
 
+        try:
+            product_id = self._find_product_id()
+            if not product_id:
+                raise ValueError("No Epomaker RT100 devices found")
+
+            if only_info:
+                self._print_device_info()
+                return True
+
+            device_path = self._find_device_path()
             if device_path is None:
-                available_devices = [device["interface_number"] for device in device_list]
+                available_devices = [device["interface_number"] for device in self.device_list]
                 raise ValueError(
                     f"No device found with interface number {self.interface_number}\n"
                     f"Available devices: {available_devices}"
@@ -103,13 +101,38 @@ class EpomakerController:
 
             self.device = hid.device()
             self.device.open_path(device_path)
-            # print(f"Manufacturer: {self.device.get_manufacturer_string()}")
-            # print(f"Product: {self.device.get_product_string()}")
-            # print(f"Serial No: {self.device.get_serial_number_string()}")
             return True
         except Exception as e:
             print(f"Failed to open device: {e}")
             return False
+
+    def _find_product_id(self) -> int | None:
+        """Finds the product ID of the device.
+
+        Returns:
+            int | None: The product ID if found, None otherwise.
+        """
+        for pid in PRODUCT_IDS:
+            self.device_list = hid.enumerate(self.vendor_id, pid)
+            if self.device_list:
+                return pid
+        return None
+
+    def _print_device_info(self) -> None:
+        """Prints device information."""
+        import pprint
+        pprint.pprint(self.device_list)
+
+    def _find_device_path(self) -> bytes | None:
+        """Finds the device path with the specified interface number.
+
+        Returns:
+            str | None: The device path if found, None otherwise.
+        """
+        for device in self.device_list:
+            if device["interface_number"] == self.interface_number:
+                return device["path"]
+        return None
 
     def _send_command(
         self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1
