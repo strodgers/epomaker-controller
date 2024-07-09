@@ -70,10 +70,10 @@ class EpomakerController:
         """Opens the USB HID device and prints device information.
 
         Args:
-            only_info (bool): Whether to only print device information and exit (default: False).
+            only_info (bool): Print device information and exit (default: False).
 
         Raises:
-            ValueError: If no Epomaker RT100 devices are found.
+            ValueError: If no device is found with the specified interface number.
 
         Returns:
             bool: True if the device is opened successfully, False otherwise.
@@ -94,7 +94,9 @@ class EpomakerController:
         # This way we don't block usage of the keyboard whilst the device is open
         device_path = self._find_device_path()
         if device_path is None:
-            available_devices = [device["interface_number"] for device in self.device_list]
+            available_devices = [
+                device["interface_number"] for device in self.device_list
+            ]
             raise ValueError(
                 f"No device found with interface number {self.interface_number}\n"
                 f"Available devices: {available_devices}"
@@ -125,17 +127,19 @@ class EpomakerController:
             self.device = hid.device()
             self.device.open_path(device_path)
         except IOError as e:
-            print(f"Failed to open device: {e}\n"
-                  "Please make sure the device is connected\n"
-                  "and you have the necessary permissions.\n\n"
-                  "You may need to run this program as root or with sudo, or\n"
-                  "set up a udev rule to allow access to the device.\n\n")
+            print(
+                f"Failed to open device: {e}\n"
+                "Please make sure the device is connected\n"
+                "and you have the necessary permissions.\n\n"
+                "You may need to run this program as root or with sudo, or\n"
+                "set up a udev rule to allow access to the device.\n\n"
+            )
             self.device = None
 
     def generate_udev_rule(self) -> None:
         """Generates a udev rule for the connected keyboard."""
         rule_content = (
-            f'# Epomaker RT100 keyboard\n'
+            f"# Epomaker RT100 keyboard\n"
             f'SUBSYSTEM=="usb", ATTRS{{idVendor}}=="{self.vendor_id:04x}", '
             f'ATTRS{{idProduct}}=="{self._find_product_id():04x}", MODE="0666", '
             'GROUP="plugdev"\n\n'
@@ -154,26 +158,18 @@ class EpomakerController:
             temp_file.write(rule_content)
 
         # Move the file to the correct location using sudo
-        subprocess.run(
-            ["sudo", "mv", temp_file_path, rule_file_path],
-            check=True
-        )
+        subprocess.run(["sudo", "mv", temp_file_path, rule_file_path], check=True)
 
         # Reload udev rules
-        subprocess.run(
-            ["sudo", "udevadm", "control", "--reload-rules"],
-            check=True
-        )
-        subprocess.run(
-            ["sudo", "udevadm", "trigger"],
-            check=True
-        )
+        subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
+        subprocess.run(["sudo", "udevadm", "trigger"], check=True)
 
         print("Rule generated successfully")
 
     def _print_device_info(self) -> None:
         """Prints device information."""
         import pprint
+
         pprint.pprint(self.device_list)
 
     def _find_device_path(self) -> bytes | None:
