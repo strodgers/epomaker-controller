@@ -129,7 +129,7 @@ class EpomakerController:
                   "Please make sure the device is connected\n"
                   "and you have the necessary permissions.\n\n"
                   "You may need to run this program as root or with sudo, or\n"
-                  "set up a udev rule to allow access to the device\n\n")
+                  "set up a udev rule to allow access to the device.\n\n")
             self.device = None
 
     def generate_udev_rule(self) -> None:
