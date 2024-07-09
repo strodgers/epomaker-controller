@@ -179,17 +179,18 @@ def start_daemon(temp_key: str | None, interface: int) -> None:
     """
     try:
         controller = EpomakerController(interface, dry_run=False)
-        while True:
-            if not controller.open_device():
-                click.echo("Failed to open device.")
-                return
-            # Set current time and date
-            controller.send_time()
+        if not controller.open_device():
+            click.echo("Failed to open device.")
+            return
+        # Set current time and date
+        controller.send_time()
 
+        while True:
             # Get CPU usage
-            cpu_usage = round(psutil.cpu_percent(interval=1))
-            click.echo(f"CPU Usage: {cpu_usage}%")
-            controller.send_cpu(int(cpu_usage), from_daemon=True)
+            cpu_usage = psutil.cpu_percent(interval=1)
+            cpu_usage_rounded = round(cpu_usage)
+            click.echo(f"CPU Usage: {cpu_usage}%, sending {cpu_usage_rounded}%")
+            controller.send_cpu(int(cpu_usage_rounded), from_daemon=True)
 
             # Get device temperature using the provided key
             if temp_key:
