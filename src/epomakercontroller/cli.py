@@ -179,13 +179,16 @@ def start_daemon(temp_key: str | None, interface: int) -> None:
     """
     try:
         controller = EpomakerController(interface, dry_run=False)
-        if not controller.open_device():
-            click.echo("Failed to open device.")
-            return
-        # Set current time and date
-        controller.send_time()
-
+        first = True
         while True:
+            if not controller.open_device():
+                click.echo("Failed to open device.")
+                return
+            if first:
+                # Set current time and date
+                controller.send_time()
+                first = False
+
             # Get CPU usage
             cpu_usage = psutil.cpu_percent(interval=1)
             cpu_usage_rounded = round(cpu_usage)
