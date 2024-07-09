@@ -64,6 +64,15 @@ Commands:
   upload-image       Upload an image to the Epomaker device.
 ```
 
+### Permissions
+In order to communicate with your keyboard without having to use sudo, you can
+use the tool to generate a udev rule for the connected RT100:
+```console
+epomakercontroller dev --udev
+```
+You will need to enter your password when prompted.
+
+### CPU/Temperature display
 The temperature on the Epomaker screen is supposed to be for the weather, but I thought it was more
 useful to display the temperature of some device on the host machine. You will need to find out
 the label used by a sensor on your machine, which you can do by:
