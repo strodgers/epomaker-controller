@@ -91,6 +91,8 @@ class EpomakerController:
                 self._print_device_info()
                 return True
 
+            # Find the device with the specified interface number so we can open by path
+            # This way we don't block usage of the keyboard whilst the device is open
             device_path = self._find_device_path()
             if device_path is None:
                 available_devices = [device["interface_number"] for device in self.device_list]
@@ -107,7 +109,7 @@ class EpomakerController:
             return False
 
     def _find_product_id(self) -> int | None:
-        """Finds the product ID of the device.
+        """Finds the product ID of the device using a list of possible product IDs.
 
         Returns:
             int | None: The product ID if found, None otherwise.
@@ -127,7 +129,7 @@ class EpomakerController:
         """Finds the device path with the specified interface number.
 
         Returns:
-            str | None: The device path if found, None otherwise.
+            bytes | None: The device path if found, None otherwise.
         """
         for device in self.device_list:
             if device["interface_number"] == self.interface_number:
