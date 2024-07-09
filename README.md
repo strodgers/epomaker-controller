@@ -139,7 +139,7 @@ epomakercontroller start-daemon --interface 2
 You can also print all the available information about the connected keyboard using the 'dev'
 command. Here is an example of the output from my own keyboard:
 ```console
-epomakercontroller dev print_all_info
+epomakercontroller dev --print
 Printing all available information about the connected keyboard.
 WARNING: If this program errors out or you cancel early, the keyboard
               may become unresponsive. It should work fine again if you unplug and plug
