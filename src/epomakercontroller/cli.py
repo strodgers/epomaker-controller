@@ -23,18 +23,18 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("image_path", type=click.Path(exists=True))
-@click.option("-i", "--interface", type=int, default=INTERFACE_NUMBER)
-def upload_image(image_path: str, interface: int) -> None:
+def upload_image(image_path: str) -> None:
     """Upload an image to the Epomaker device.
 
     Args:
         image_path (str): The path to the image file to upload.
-        interface (int): The HID interface number to use.
     """
     try:
-        controller = EpomakerController(interface, dry_run=False)
+        # Need to use interface 0 for this
+        controller = EpomakerController(interface_number=0, dry_run=False)
         if controller.open_device():
-            print("Uploading, you should see the status on the keyboard screen")
+            print("Uploading, you should see the status on the keyboard screen.\n"
+                  "The keyboard will be unresponsive during this process.")
             controller.send_image(image_path)
             click.echo("Image uploaded successfully.")
         controller.close_device()
