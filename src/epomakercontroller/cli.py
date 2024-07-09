@@ -245,20 +245,29 @@ def list_temp_devices() -> None:
 
 
 @cli.command()
-@click.argument("print_all_info", type=str, required=False)
-def dev(print_all_info: bool | None) -> None:
+@click.option("--print", "print_info", is_flag=True, help="Print all available information about the connected keyboard.")
+@click.option("--udev", "generate_udev", is_flag=True, help="Generate a udev rule for the connected keyboard.")
+def dev(print_info: bool, generate_udev: bool) -> None:
     """Various dev tools.
 
     Args:
-        print_all_info (str): Print all available information about the connected keyboard.
+        print_info (bool): Print information about the connected keyboard.
+        generate_udev (bool): Generate a udev rule for the connected keyboard.
     """
-
-    if print_all_info:
+    if print_info:
         click.echo("Printing all available information about the connected keyboard.")
         controller = EpomakerController(INTERFACE_NUMBER, dry_run=False)
         if not controller.open_device(only_info=True):
             click.echo("Failed to open device.")
             return
+    elif generate_udev:
+        click.echo("Generating udev rule for the connected keyboard.")
+        # Init controller to get the PID
+        controller = EpomakerController(INTERFACE_NUMBER, dry_run=False)
+        if not controller.open_device(only_info=True):
+            click.echo("Failed to open device.")
+            return
+        controller.generate_udev_rule()
     else:
         click.echo("No dev tool specified.")
 
