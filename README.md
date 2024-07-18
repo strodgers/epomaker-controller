@@ -38,7 +38,7 @@ $ git clone https://github.com/strodgers/epomaker-controller
 $ cd epomaker-controller
 $ python3.10 -m venv epomaker
 $ source epomaker/bin/activate
-$ poetry install
+$ poetry install --only main
 ```
 
 ## Usage
