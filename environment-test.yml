@@ -1,14 +1,14 @@
-name: epomaker-env
-channels:
-  - conda-forge
-  - defaults
 dependencies:
   - python=3.11
+  - flake8
+  - pytest
   - numpy
+  - matplotlib
   - click
   - hidapi
   - pip
   - pip:
       - click==8.1.7
       - hidapi==0.14.0
+      - matplotlib==3.8.3
       - opencv-python-headless==4.10.0.82

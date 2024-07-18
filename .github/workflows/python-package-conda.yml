@@ -24,17 +24,19 @@ jobs:
 
     - name: Install dependencies
       run: |
-        conda env create --file environment.yml --name test-env
-        source activate test-env
+        conda env create --file environment.yml --name epomaker-env
+        conda env create --file environment-test.yml --name test-env
 
     - name: Install package with Poetry
       run: |
-        source activate test-env
+        source activate epomaker-env
         pip install poetry
-        poetry install
+        poetry install --only main
 
     - name: Test with pytest
       run: |
         source activate test-env
+        pip install poetry
+        poetry install
         conda install pytest -y
         pytest
