@@ -24,7 +24,7 @@ jobs:
 
     - name: Install dependencies
       run: |
-        conda env create --file environment.yml --name test-env
+        conda env create --file environment-test.yml --name test-env
         source activate test-env
 
     - name: Install package with Poetry
