@@ -53,18 +53,15 @@ class EpomakerController:
 
     def __init__(
         self,
-        interface_number: int,
         vendor_id: int = VENDOR_ID,
         dry_run: bool = True,
     ) -> None:
         """Initializes the EpomakerController object.
 
         Args:
-            interface_number (int): The interface number of the USB HID device to use.
             vendor_id (int): The vendor ID of the USB HID device.
             dry_run (bool): Whether to run in dry run mode (default: True).
         """
-        self.interface_number = interface_number
         self.vendor_id = vendor_id
         self.device = hid.device()
         self.dry_run = dry_run
@@ -103,12 +100,8 @@ class EpomakerController:
         # This way we don't block usage of the keyboard whilst the device is open
         device_path = self._find_device_path()
         if device_path is None:
-            available_devices = [
-                device["interface_number"] for device in self.device_list
-            ]
             raise ValueError(
-                f"No device found with interface number {self.interface_number}\n"
-                f"Available devices: {available_devices}"
+                "No device found"
             )
         self._open_device(device_path)
 
