@@ -20,6 +20,7 @@ from .commands import (
     EpomakerTempCommand,
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
+    EpomakerPollCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
 
@@ -28,7 +29,7 @@ VENDOR_ID = 0x3151
 PRODUCT_IDS_WIRED = [0x4010, 0x4015]
 PRODUCT_IDS_24G = [0x4011, 0x4016]
 
-USE_WIRELESS = False
+USE_WIRELESS = True
 PRODUCT_IDS = PRODUCT_IDS_WIRED
 if USE_WIRELESS:
     PRODUCT_IDS += PRODUCT_IDS_24G
@@ -249,7 +250,8 @@ class EpomakerController:
         )
 
     def _send_command(
-        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1
+        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1,
+        poll_first: bool = False
     ) -> None:
         """Sends a command to the HID device.
 
@@ -257,6 +259,7 @@ class EpomakerController:
             command (EpomakerCommand): The command to send.
             sleep_time (float): The time to sleep between sending packets
                 (default: 0.1).
+            poll_first(bool): Whether or not to poll the device first
         """
         assert command.report_data_prepared
         for packet in command:
@@ -264,6 +267,8 @@ class EpomakerController:
             if self.dry_run:
                 print(f"Dry run: skipping command send: {packet!r}")
             elif self.device:
+                if poll_first:
+                    self.poll()
                 self.device.send_feature_report(packet.get_all_bytes())
             time.sleep(sleep_time)
 
@@ -317,6 +322,7 @@ class EpomakerController:
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         self._send_command(temperature_command)
 
+
     def send_cpu(self, cpu: int, from_daemon: bool = False) -> None:
         """Sends the CPU percentage to the HID device.
 
@@ -343,6 +349,11 @@ class EpomakerController:
         """
         rgb_command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
         self._send_command(rgb_command)
+
+    def poll(self) -> None:
+        poll_command = EpomakerPollCommand.EpomakerPollCommand()
+        self._send_command(poll_command, poll_first=False)
+        _ = self.device.get_feature_report(0x00, 128)
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
