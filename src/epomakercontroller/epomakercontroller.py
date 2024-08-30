@@ -4,11 +4,14 @@ This module contains the EpomakerController class, which represents a controller
 for an Epomaker USB HID device.
 """
 
+import dataclasses
 from datetime import datetime
+import os
 import time
-from typing import Any
+from typing import Any, Optional
 import hid
 import subprocess
+import re
 
 from .commands import (
     EpomakerCommand,
@@ -22,7 +25,13 @@ from .commands.data.constants import BUFF_LENGTH
 
 VENDOR_ID = 0x3151
 # Some Epomaker keyboards seem to have have different product IDs
-PRODUCT_IDS = [0x4010, 0x4015]
+PRODUCT_IDS_WIRED = [0x4010, 0x4015]
+PRODUCT_IDS_24G = [0x4011, 0x4016]
+
+USE_WIRELESS = False
+PRODUCT_IDS = PRODUCT_IDS_WIRED
+if USE_WIRELESS:
+    PRODUCT_IDS += PRODUCT_IDS_24G
 
 
 class EpomakerController:
@@ -172,16 +181,79 @@ class EpomakerController:
 
         pprint.pprint(self.device_list)
 
-    def _find_device_path(self) -> bytes | None:
+    @dataclasses.dataclass
+    class HIDInfo:
+        device_name: str
+        event_path: str
+        hid_path: Optional[str] = None
+
+    @staticmethod
+    def _find_device_path() -> Optional[bytes]:
         """Finds the device path with the specified interface number.
 
         Returns:
-            bytes | None: The device path if found, None otherwise.
+            Optional[bytes]: The device path if found, None otherwise.
         """
-        for device in self.device_list:
-            if device["interface_number"] == self.interface_number:
-                return bytes(device["path"])
-        return None
+        description = r"ROYUAN .* System Control"
+        input_dir = "/sys/class/input"
+        hid_infos = EpomakerController._get_hid_infos(input_dir, description)
+
+        if not hid_infos:
+            print(f"No events found with description: '{description}'")
+            return None
+
+        EpomakerController._populate_hid_paths(hid_infos)
+
+        return EpomakerController._select_device_path(hid_infos)
+
+    @staticmethod
+    def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:
+        """Retrieve HID information based on the given description."""
+        hid_infos = []
+        for event in os.listdir(input_dir):
+            if event.startswith("event"):
+                device_name_path = os.path.join(input_dir, event, "device", "name")
+                try:
+                    with open(device_name_path, "r") as f:
+                        device_name = f.read().strip()
+                        if re.search(description, device_name):
+                            event_path = os.path.join(input_dir, event)
+                            hid_infos.append(
+                                EpomakerController.HIDInfo(device_name, event_path)
+                            )
+                except FileNotFoundError:
+                    continue
+        return hid_infos
+
+    @staticmethod
+    def _populate_hid_paths(hid_infos: list[HIDInfo]) -> None:
+        """Populate the HID paths for each HIDInfo object in the list."""
+        for hi in hid_infos:
+            device_symlink = os.path.join(hi.event_path, "device")
+            if not os.path.islink(device_symlink):
+                print(f"No 'device' symlink found in {hi.event_path}")
+                continue
+
+            hid_device_path = os.path.realpath(device_symlink)
+            match = re.search(r"\b\d+-[\d.]+:\d+\.\d+\b", hid_device_path)
+            hi.hid_path = match.group(0) if match else None
+
+    @staticmethod
+    def _select_device_path(hid_infos: list[HIDInfo]) -> Optional[bytes]:
+        """Select the appropriate device path based on interface preference."""
+        device_name_filter = "Wireless" if USE_WIRELESS else "Wired"
+        filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
+
+        if not filtered_devices:
+            print(f"Could not find {device_name_filter} interface")
+            return None
+
+        selected_device = filtered_devices[0]
+        return (
+            selected_device.hid_path.encode("utf-8")
+            if selected_device.hid_path
+            else None
+        )
 
     def _send_command(
         self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1
