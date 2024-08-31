@@ -124,19 +124,9 @@ epomakercontroller start-daemon
 
 The daemon will also update the date and time once when it starts
 
-### Note about interface numbers
+### Show connected devices
 
-I only have my own keyboard to go by, but as far as I can tell there are 3 available HID
-interfaces available when the keyboard is plugged in over USB. All 3 of them will work with
-this controller HOWEVER using interface 0 interferes with regular usage of the keyboard (eg typing).
-
-I have found interface 1 to be the best to use, but some commands take an option for you to set the
-interface number manually if you need to eg:
-```console
-epomakercontroller start-daemon --interface 2
-```
-
-You can also print all the available information about the connected keyboard using the 'dev'
+You can print all the available information about the connected keyboard using the 'dev'
 command. Here is an example of the output from my own keyboard:
 ```console
 epomakercontroller dev --print
