@@ -12,3 +12,4 @@ dependencies:
       - hidapi==0.14.0
       - matplotlib==3.8.3
       - opencv-python-headless==4.10.0.82
+      - pyparsing
