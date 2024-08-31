@@ -33,11 +33,11 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-class TestData:
+class DataHelper:
     """Test data for the EpomakerController."""
 
     def __init__(self, test_name: str) -> None:
-        """Initializes the TestData object.
+        """Initializes the DataHelper object.
 
         Args:
             test_name (str): The name of the test.
@@ -93,7 +93,7 @@ all_tests = [
     "_decode_rgb565-calibration-image-bytes",
 ]
 
-all_test_data = {test: TestData(test) for test in all_tests}
+all_test_data = {test: DataHelper(test) for test in all_tests}
 
 
 def assert_colour_close(
