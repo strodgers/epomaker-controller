@@ -6,6 +6,7 @@ for an Epomaker USB HID device.
 
 import dataclasses
 from datetime import datetime
+from json import dumps
 import os
 import time
 from typing import Any, Optional
@@ -170,9 +171,17 @@ class EpomakerController:
 
     def _print_device_info(self) -> None:
         """Prints device information."""
-        import pprint
-
-        pprint.pprint(self.device_list)
+        devices = self.device_list.copy()
+        for device in devices:
+            device["path"] = device["path"].decode("utf-8")
+            device["vendor_id"] = f"0x{device["vendor_id"]:2x}"
+            device["product_id"] = f"0x{device["product_id"]:2x}"
+        print(
+            dumps(
+                devices,
+                indent="  ",
+            )
+        )
 
     @dataclasses.dataclass
     class HIDInfo:
