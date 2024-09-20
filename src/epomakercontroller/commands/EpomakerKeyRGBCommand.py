@@ -11,7 +11,7 @@ from typing import Iterator
 from .EpomakerCommand import EpomakerCommand, CommandStructure
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
-from .data.constants import KeyboardKey
+from .data.constants import ALL_KEYBOARD_KEYS, KeyboardKey
 
 
 class KeyMap:
@@ -19,7 +19,9 @@ class KeyMap:
 
     def __init__(self) -> None:
         """Initializes the KeyMap."""
-        self.key_map: dict[int, tuple[int, int, int]] = {}
+        self.key_map: dict[KeyboardKey, tuple[int, int, int]] = {}
+        for key in ALL_KEYBOARD_KEYS:
+            self.key_map[key] = (0, 0, 0)
 
     def __getitem__(self, key: KeyboardKey) -> tuple[int, int, int]:
         """Gets the RGB value for a given key.
@@ -30,7 +32,7 @@ class KeyMap:
         Returns:
             tuple[int, int, int]: The RGB value for the key.
         """
-        return self.key_map[key.value]
+        return self.key_map[key]
 
     def __setitem__(self, key: KeyboardKey, value: tuple[int, int, int]) -> None:
         """Sets the RGB value for a given key.
@@ -39,7 +41,7 @@ class KeyMap:
             key (KeyboardKey): The key to set the RGB value for.
             value (tuple[int, int, int]): The RGB value to set.
         """
-        self.key_map[key.value] = value
+        self.key_map[key] = value
 
     def __iter__(self) -> Iterator[tuple[int, tuple[int, int, int]]]:
         """Iterates over the key map.
@@ -58,10 +60,23 @@ class KeyboardRGBFrame:
     milliseconds to display the frame.
     """
 
-    key_map: KeyMap
     time_ms: int
+    key_map: KeyMap
     length: int = 7
     index: int = 0
+
+    @classmethod
+    def from_keys(cls, keys: set[KeyboardKey], colour: tuple[int, int, int], time_ms: int = 0) -> "KeyboardRGBFrame":
+        key_map = KeyMap()
+        for key in keys:
+            key_map[key] = colour
+        return cls(time_ms=time_ms, key_map=key_map)
+
+    def overlay(self, overlay_frame: "KeyboardRGBFrame") -> None:
+        for key in ALL_KEYBOARD_KEYS:
+            if overlay_frame.key_map[key] != (0, 0, 0):
+                self.key_map[key] = overlay_frame.key_map[key]
+
 
 
 class EpomakerKeyRGBCommand(EpomakerCommand):
@@ -104,20 +119,25 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                 )
                 # Zero out the data buffer
                 data_byterarray = bytearray(data_buffer_length)
-                for key_index, rgb in frame.key_map:
-                    # For each key, set the RGB values in the data buffer
-                    for i, colour in enumerate(rgb):
-                        # R, G, B individually
-                        this_frame_colour_index = (
-                            (key_index * 3)
-                            - (this_frame_report_index * data_buffer_length)
-                            + i
-                        )
-                        if 0 <= this_frame_colour_index < len(data_byterarray):
-                            data_byterarray[this_frame_colour_index] = colour
+                try:
+                    for key, rgb in frame.key_map:
+                        # For each key, set the RGB values in the data buffer
+                        for i, colour in enumerate(rgb):
+                            # R, G, B individually
+                            this_frame_colour_index = (
+                                (key.value * 3)
+                                - (this_frame_report_index * data_buffer_length)
+                                + i
+                            )
+                            if 0 <= this_frame_colour_index < len(data_byterarray):
+                                data_byterarray[this_frame_colour_index] = colour
+                except Exception as e:
+                    pass
                 report.add_data(data_byterarray)
                 self._insert_report(report)
                 report_index += 1
+
+        self.report_data_prepared = True
 
     def get_data_reports(self) -> list[ReportWithData]:
         """Returns the data reports.

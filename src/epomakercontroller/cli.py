@@ -9,7 +9,9 @@ from epomakercontroller.commands import (
 )
 from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profile
 from epomakercontroller import EpomakerController
+from .keyboard_gui import RGBKeyboardGUI
 import psutil
+import tkinter as tk
 
 
 @click.group()
@@ -54,7 +56,7 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
         mapping = EpomakerKeyRGBCommand.KeyMap()
         for key in ALL_KEYBOARD_KEYS:
             mapping[key] = (r, g, b)
-        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 50)]
+        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(0, mapping)]
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
             controller.send_keys(frames)
@@ -252,6 +254,24 @@ def dev(print_info: bool, generate_udev: bool) -> None:
         controller.generate_udev_rule()
     else:
         click.echo("No dev tool specified.")
+
+
+@cli.command()
+def set_keys() -> None:
+    controller = EpomakerController(dry_run=False)
+    if not controller.open_device():
+        click.echo("Failed to open device.")
+        return
+    root = tk.Tk()
+    RGBKeyboardGUI(root, controller.send_keys)
+
+    def on_close() -> None:
+        # Close the device or perform cleanup
+        controller.close_device()  # Assuming you have a close_device method
+        root.destroy()  # This will end the tkinter mainloop
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+    root.mainloop()
 
 
 if __name__ == "__main__":
