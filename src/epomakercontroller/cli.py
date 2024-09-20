@@ -259,6 +259,9 @@ def dev(print_info: bool, generate_udev: bool) -> None:
 
 @cli.command()
 def set_keys() -> None:
+    """Open a simple GUI to set individual key colours.
+
+    """
     controller = EpomakerController(dry_run=False)
     if not controller.open_device():
         click.echo("Failed to open device.")
