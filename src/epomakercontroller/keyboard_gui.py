@@ -1,9 +1,7 @@
 import tkinter as tk
 from tkinter.colorchooser import askcolor as askcolour  # thats right
 from .commands.data.constants import ALL_KEYBOARD_KEYS, KK, KeyboardKey
-from .epomakercontroller import EpomakerController
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
-from .commands import EpomakerKeyRGBCommand
 
 
 class RGBKeyboardGUI:

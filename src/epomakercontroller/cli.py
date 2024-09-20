@@ -3,13 +3,14 @@
 
 import time
 import click
-from epomakercontroller.commands import (
+from .commands import (
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
 )
-from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profile
-from epomakercontroller import EpomakerController
+from .commands.data.constants import ALL_KEYBOARD_KEYS, Profile
+from .epomakercontroller import EpomakerController
 from .keyboard_gui import RGBKeyboardGUI
+
 import psutil
 import tkinter as tk
 
