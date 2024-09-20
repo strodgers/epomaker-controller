@@ -1,11 +1,12 @@
 import tkinter as tk
 from tkinter.colorchooser import askcolor as askcolour  # thats right
-from .commands.data.constants import ALL_KEYBOARD_KEYS, KK, KeyboardKey
+from .commands.data.constants import KK, KeyboardKey
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
+from typing import Callable
 
 
 class RGBKeyboardGUI:
-    def __init__(self, root: tk.Tk, callback):
+    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None]):
         self.root = root
         self.root.title("RGB Keyboard (UK ISO Layout)")
         self.key_btn_dict: dict[KeyboardKey, tk.Button] = {}
@@ -171,12 +172,14 @@ class RGBKeyboardGUI:
                     col_offset += 1
                     continue
 
-                width = special_keys.get(key, {}).get("width", 4)
-                height = special_keys.get(key, {}).get("height", 2)
-                columnspan = special_keys.get(key, {}).get("columnspan", 1)
-                rowspan = special_keys.get(key, {}).get("rowspan", 1)
-                padx = special_keys.get(key, {}).get("padx", 2)
-                pady = special_keys.get(key, {}).get("pady", 2)
+                special_key = special_keys.get(key, {})
+
+                width = special_key.get("width", 4)
+                height = special_key.get("height", 2)
+                columnspan = special_key.get("columnspan", 1)
+                rowspan = special_key.get("rowspan", 1)
+                padx = special_key.get("padx", 2)
+                pady = special_key.get("pady", 2)
 
                 btn = tk.Button(
                     self.root,
