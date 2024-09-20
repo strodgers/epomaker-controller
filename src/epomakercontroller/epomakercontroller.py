@@ -174,8 +174,8 @@ class EpomakerController:
         devices = self.device_list.copy()
         for device in devices:
             device["path"] = device["path"].decode("utf-8")
-            device["vendor_id"] = f"0x{device["vendor_id"]:2x}"
-            device["product_id"] = f"0x{device["product_id"]:2x}"
+            device["vendor_id"] = f"0x{device['vendor_id']:04x}"
+            device["product_id"] = f"0x{device['product_id']:04x}"
         print(
             dumps(
                 devices,
