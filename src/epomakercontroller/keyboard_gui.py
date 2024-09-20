@@ -14,7 +14,7 @@ class RGBKeyboardGUI:
         self.setup_ui()
         self.root.bind("<Return>", self.apply_colour_to_selected_keys)
 
-        self.frame = KeyboardRGBFrame(time_ms=0, key_map=KeyMap())
+        self.frame = KeyboardRGBFrame(key_map=KeyMap())
         self.callback = callback
 
     def _strip_keyname(self, key: str) -> str:

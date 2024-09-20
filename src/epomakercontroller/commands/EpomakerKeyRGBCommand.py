@@ -43,7 +43,7 @@ class KeyMap:
         """
         self.key_map[key] = value
 
-    def __iter__(self) -> Iterator[tuple[int, tuple[int, int, int]]]:
+    def __iter__(self) -> Iterator[tuple[KeyboardKey, tuple[int, int, int]]]:
         """Iterates over the key map.
 
         Returns:
@@ -60,9 +60,8 @@ class KeyboardRGBFrame:
     milliseconds to display the frame.
     """
 
-    time_ms: int
     key_map: KeyMap
-    length: int = 7
+    time_ms: int = 0
     index: int = 0
 
     @classmethod

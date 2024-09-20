@@ -57,7 +57,7 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
         mapping = EpomakerKeyRGBCommand.KeyMap()
         for key in ALL_KEYBOARD_KEYS:
             mapping[key] = (r, g, b)
-        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(0, mapping)]
+        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping)]
         controller = EpomakerController(dry_run=False)
         if controller.open_device():
             controller.send_keys(frames)
