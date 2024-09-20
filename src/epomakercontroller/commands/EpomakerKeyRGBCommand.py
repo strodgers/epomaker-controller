@@ -118,17 +118,17 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                 )
                 # Zero out the data buffer
                 data_byterarray = bytearray(data_buffer_length)
-                    for key, rgb in frame.key_map:
-                        # For each key, set the RGB values in the data buffer
-                        for i, colour in enumerate(rgb):
-                            # R, G, B individually
-                            this_frame_colour_index = (
-                                (key.value * 3)
-                                - (this_frame_report_index * data_buffer_length)
-                                + i
-                            )
-                            if 0 <= this_frame_colour_index < len(data_byterarray):
-                                data_byterarray[this_frame_colour_index] = colour
+                for key, rgb in frame.key_map:
+                    # For each key, set the RGB values in the data buffer
+                    for i, colour in enumerate(rgb):
+                        # R, G, B individually
+                        this_frame_colour_index = (
+                            (key.value * 3)
+                            - (this_frame_report_index * data_buffer_length)
+                            + i
+                        )
+                        if 0 <= this_frame_colour_index < len(data_byterarray):
+                            data_byterarray[this_frame_colour_index] = colour
                 report.add_data(data_byterarray)
                 self._insert_report(report)
                 report_index += 1
