@@ -59,6 +59,7 @@ Commands:
   send-cpu           Send CPU usage percentage to the Epomaker screen.
   send-temperature   Send temperature to the Epomaker screen.
   send-time          Send the current time to the Epomaker device.
+  set-keys           Open a simple GUI to set individual key colours.
   set-rgb-all-keys   Set RGB colour for all keys.
   start-daemon       Start a daemon to update the CPU usage and...
   upload-image       Upload an image to the Epomaker device.
@@ -134,36 +135,44 @@ Printing all available information about the connected keyboard.
 WARNING: If this program errors out or you cancel early, the keyboard
               may become unresponsive. It should work fine again if you unplug and plug
                it back in!
-[{'interface_number': 0,
-  'manufacturer_string': 'ROYUAN',
-  'path': b'5-2.3:1.0',
-  'product_id': 16400,
-  'product_string': 'RT100 Wired',
-  'release_number': 1281,
-  'serial_number': '',
-  'usage': 0,
-  'usage_page': 0,
-  'vendor_id': 12625},
- {'interface_number': 1,
-  'manufacturer_string': 'ROYUAN',
-  'path': b'5-2.3:1.1',
-  'product_id': 16400,
-  'product_string': 'RT100 Wired',
-  'release_number': 1281,
-  'serial_number': '',
-  'usage': 0,
-  'usage_page': 0,
-  'vendor_id': 12625},
- {'interface_number': 2,
-  'manufacturer_string': 'ROYUAN',
-  'path': b'5-2.3:1.2',
-  'product_id': 16400,
-  'product_string': 'RT100 Wired',
-  'release_number': 1281,
-  'serial_number': '',
-  'usage': 0,
-  'usage_page': 0,
-  'vendor_id': 12625}]
+[
+  {
+    "path": "1-7.3:1.0",
+    "vendor_id": "0x3151",
+    "product_id": "0x4010",
+    "serial_number": "",
+    "release_number": 1281,
+    "manufacturer_string": "ROYUAN",
+    "product_string": "RT100 Wired",
+    "usage_page": 0,
+    "usage": 0,
+    "interface_number": 0
+  },
+  {
+    "path": "1-7.3:1.1",
+    "vendor_id": "0x3151",
+    "product_id": "0x4010",
+    "serial_number": "",
+    "release_number": 1281,
+    "manufacturer_string": "ROYUAN",
+    "product_string": "RT100 Wired",
+    "usage_page": 0,
+    "usage": 0,
+    "interface_number": 1
+  },
+  {
+    "path": "1-7.3:1.2",
+    "vendor_id": "0x3151",
+    "product_id": "0x4010",
+    "serial_number": "",
+    "release_number": 1281,
+    "manufacturer_string": "ROYUAN",
+    "product_string": "RT100 Wired",
+    "usage_page": 0,
+    "usage": 0,
+    "interface_number": 2
+  }
+]
 ```
 
 ## TODO
