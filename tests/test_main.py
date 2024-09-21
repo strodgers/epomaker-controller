@@ -5,6 +5,7 @@ from click.testing import CliRunner
 from typing import Iterator, Iterable
 from epomakercontroller.commands.data.constants import (
     ALL_KEYBOARD_KEYS,
+    KEYBOARD_KEYS_NAME_DICT,
     IMAGE_DIMENSIONS,
     Profile,
 )
@@ -287,11 +288,11 @@ def test_checksum() -> None:
     ]:
         for i, t in enumerate(this_test_data):
             checksum = Report.Report._calculate_checksum(t[:checkbit])
-            assert checksum == t[checkbit].to_bytes(
-                1, byteorder="big"
-            ), (f"{i} > Checksum: {checksum!r},"
+            assert checksum == t[checkbit].to_bytes(1, byteorder="big"), (
+                f"{i} > Checksum: {checksum!r},"
                 "Buffer: {hex(t[checkbit])},"
-                "test {this_test_data.name}")
+                "test {this_test_data.name}"
+            )
 
 
 def compare_bytes_iterable(a: Iterable[bytes], b: Iterable[bytes]) -> None:
@@ -313,7 +314,7 @@ def test_set_rgb_all_keys() -> None:
     mapping = EpomakerKeyRGBCommand.KeyMap()
     for key in ALL_KEYBOARD_KEYS:
         mapping[key] = (100, 5, 69)
-    frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 50)]
+    frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=50)]
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
 
     compare_bytes_iterable(this_test_data, command.iter_report_bytes())
@@ -321,23 +322,26 @@ def test_set_rgb_all_keys() -> None:
 
 def test_set_rgb_multiple_frames() -> None:
     """Test setting RGB values for multiple frames."""
+
+    # This test is expecting the number row numbers to each be set in a different frame
+
     this_test_data = all_test_data["EpomakerKeyRGBCommand-numrow-keys-different-frames"]
     frames = []
 
-    # NUMROW_1 to NUMROW_9
+    # frames 1 to 9 each set NUMROW_1 to NUMROW_9
     for i in range(1, 10):
         mapping = EpomakerKeyRGBCommand.KeyMap()
-        key = [k for k in ALL_KEYBOARD_KEYS if k.name == f"NUMROW_{i}"][0]
+        key = KEYBOARD_KEYS_NAME_DICT[f"NUMROW_{i}"]
         mapping[key] = (255, 255, 255)
         frames.append(
-            EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, i * 10, index=i - 1)
+            EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=i * 10, index=i - 1)
         )
 
-    # NUMROW_0 last
+    # frame 10 has NUMROW_0 set
     mapping = EpomakerKeyRGBCommand.KeyMap()
-    key = [k for k in ALL_KEYBOARD_KEYS if k.name == "NUMROW_0"][0]
+    key = KEYBOARD_KEYS_NAME_DICT["NUMROW_0"]
     mapping[key] = (255, 255, 255)
-    frames.append(EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 100, index=9))
+    frames.append(EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=100, index=9))
 
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
     compare_bytes_iterable(this_test_data, command.iter_report_bytes())

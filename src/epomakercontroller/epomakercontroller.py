@@ -267,7 +267,7 @@ class EpomakerController:
             sleep_time (float): The time to sleep between sending packets
                 (default: 0.1).
         """
-        assert command.report_data_prepared
+        assert command.report_data_prepared, "Report data not prepared"
         for packet in command:
             assert len(packet) == BUFF_LENGTH
             if self.dry_run:
