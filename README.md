@@ -17,7 +17,10 @@ NOTE!!!: This currently only works over the USB connection!
 
 ## Requirements
 
-I am using poetry v1.7.1
+Requires python3-tkinter installed eg
+```
+sudo apt-get install python3-tkinter
+```
 
 ## Installation
 I suggest using conda or a python virtual env, tested on python 3.10 and 3.12:
