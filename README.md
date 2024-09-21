@@ -68,6 +68,17 @@ Commands:
   upload-image       Upload an image to the Epomaker device.
 ```
 
+There is a basic GUI to set key colours, it currently only uses a UK ISO layout. You can open it with:
+```
+epomakercontroller set-keys
+```
+![Screenshot from 2024-09-22 00-42-07](https://github.com/user-attachments/assets/6a105262-a51d-4969-8b46-5e32c042473b)
+
+You can click on various keys, then press 'Enter' on your keyboard to select a colour:
+
+![Screenshot from 2024-09-22 00-41-59](https://github.com/user-attachments/assets/e726110b-3a22-416c-8a4f-d0ef6b4cc652)
+
+
 ### Permissions
 In order to communicate with your keyboard without having to use sudo, you can
 use the tool to generate a udev rule for the connected RT100:
