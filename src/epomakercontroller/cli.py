@@ -10,8 +10,8 @@ from .commands import (
 from .commands.data.constants import ALL_KEYBOARD_KEYS, Profile
 from .epomakercontroller import EpomakerController
 from .keyboard_gui import RGBKeyboardGUI
+from .epomaker_utils import get_cpu_usage, get_device_temp, print_temp_devices
 
-import psutil
 import tkinter as tk
 
 
@@ -36,9 +36,9 @@ def upload_image(image_path: str) -> None:
                   "The keyboard will be unresponsive during this process.")
             controller.send_image(image_path)
             click.echo("Image uploaded successfully.")
-        controller.close_device()
     except Exception as e:
         click.echo(f"Failed to upload image: {e}")
+    controller.close_device()
 
 
 @cli.command()
@@ -62,9 +62,9 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
         if controller.open_device():
             controller.send_keys(frames)
             click.echo(f"All keys set to RGB({r}, {g}, {b}) successfully.")
-        controller.close_device()
     except Exception as e:
         click.echo(f"Failed to set RGB for all keys: {e}")
+    controller.close_device()
 
 
 @cli.command()
@@ -97,10 +97,10 @@ def cycle_light_modes() -> None:
             time.sleep(5)
             counter += 1
 
-        controller.close_device()
         click.echo("Cycled through all light modes successfully.")
     except Exception as e:
         click.echo(f"Failed to cycle light modes: {e}")
+    controller.close_device()
 
 
 @cli.command()
@@ -113,9 +113,9 @@ def send_time() -> None:
         if controller.open_device():
             controller.send_time()
             click.echo("Time sent successfully.")
-        controller.close_device()
     except Exception as e:
         click.echo(f"Failed to send time: {e}")
+    controller.close_device()
 
 
 @cli.command()
@@ -131,9 +131,9 @@ def send_temperature(temperature: int) -> None:
         if controller.open_device():
             controller.send_temperature(temperature)
             click.echo("Temperature sent successfully.")
-        controller.close_device()
     except Exception as e:
         click.echo(f"Failed to send temperature: {e}")
+    controller.close_device()
 
 
 @cli.command()
@@ -149,14 +149,15 @@ def send_cpu(cpu: int) -> None:
         if controller.open_device():
             controller.send_cpu(cpu)
             click.echo("CPU usage sent successfully.")
-        controller.close_device()
     except Exception as e:
         click.echo(f"Failed to send CPU usage: {e}")
+    controller.close_device()
 
 
 @cli.command()
+@click.option("--test", "test_mode", is_flag=True, help="Start daemon in test mode, sending random data.")
 @click.argument("temp_key", type=str, required=False)
-def start_daemon(temp_key: str | None) -> None:
+def start_daemon(temp_key: str | None, test_mode: bool) -> None:
     """Start a daemon to update the CPU usage and optionally a temperature.
 
     Args:
@@ -164,69 +165,37 @@ def start_daemon(temp_key: str | None) -> None:
     """
     try:
         controller = EpomakerController(dry_run=False)
+        if not controller.open_device():
+            click.echo("Failed to open device.")
+            return
+
         first = True
         while True:
-            if not controller.open_device():
-                click.echo("Failed to open device.")
-                return
+
             if first:
                 # Set current time and date
                 controller.send_time()
                 first = False
 
-            # Get CPU usage
-            cpu_usage = psutil.cpu_percent(interval=1)
-            cpu_usage_rounded = round(cpu_usage)
-            click.echo(f"CPU Usage: {cpu_usage}%, sending {cpu_usage_rounded}%")
-            controller.send_cpu(int(cpu_usage_rounded), from_daemon=True)
+            # Send CPU usage
+            controller.send_cpu(get_cpu_usage(test_mode), from_daemon=True)
+            time.sleep(1)
 
             # Get device temperature using the provided key
-            if temp_key:
-                try:
-                    temps = psutil.sensors_temperatures()
-                    if temp_key in temps:
-                        cpu_temp = temps[temp_key][0].current
-                        rounded_cpu_temp = round(cpu_temp)
-                        click.echo(
-                            f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C"
-                        )
-                        controller.send_temperature(rounded_cpu_temp)
-                    else:
-                        available_keys = list(temps.keys())
-                        click.echo(
-                            (f"Temperature key {temp_key!r} not found."
-                             f"Available keys: {available_keys}")
-                        )
-                except AttributeError:
-                    click.echo("Temperature monitoring not supported on this system.")
+            controller.send_temperature(get_device_temp(temp_key, test_mode))
+            time.sleep(1)
 
-            controller.close_device()
-
-            time.sleep(3)
     except KeyboardInterrupt:
         click.echo("Daemon interrupted by user.")
     except Exception as e:
         click.echo(f"Failed to start daemon: {e}")
+    controller.close_device()
 
 
 @cli.command()
 def list_temp_devices() -> None:
     """List available temperature devices."""
-    try:
-        temps = psutil.sensors_temperatures()
-        if not temps:
-            click.echo("No temperature sensors found.")
-            return
-
-        for key, entries in temps.items():
-            click.echo(f"\nTemperature key: {key}")
-            for entry in entries:
-                click.echo(f"  Label: {entry.label or 'N/A'}")
-                click.echo(f"  Current: {entry.current}°C")
-                click.echo(f"  High: {entry.high or 'N/A'}°C")
-                click.echo(f"  Critical: {entry.critical or 'N/A'}°C")
-    except AttributeError:
-        click.echo("Temperature monitoring not supported on this system.")
+    print_temp_devices()
 
 
 @cli.command()
@@ -270,9 +239,8 @@ def set_keys() -> None:
     RGBKeyboardGUI(root, controller.send_keys)
 
     def on_close() -> None:
-        # Close the device or perform cleanup
-        controller.close_device()  # Assuming you have a close_device method
-        root.destroy()  # This will end the tkinter mainloop
+        controller.close_device()
+        root.destroy()
 
     root.protocol("WM_DELETE_WINDOW", on_close)
     root.mainloop()
