@@ -13,7 +13,8 @@ from .keyboard_gui import RGBKeyboardGUI
 from .epomaker_utils import get_cpu_usage, get_device_temp, print_temp_devices
 
 import tkinter as tk
-
+import importlib.resources as pkg_resources
+import epomakercontroller.configs.layouts
 
 @click.group()
 def cli() -> None:
@@ -227,7 +228,8 @@ def dev(print_info: bool, generate_udev: bool) -> None:
 
 
 @cli.command()
-def set_keys() -> None:
+@click.argument("config_file", type=str, required=False)
+def set_keys(config_file: str | None) -> None:
     """Open a simple GUI to set individual key colours.
 
     """
@@ -235,8 +237,14 @@ def set_keys() -> None:
     if not controller.open_device():
         click.echo("Failed to open device.")
         return
+
+    if not config_file:
+        # Default to UK ISO
+        with pkg_resources.path(epomakercontroller.configs.layouts, "EpomakerRT100-UK-ISO.json") as config_path:
+            config_file = str(config_path)
+
     root = tk.Tk()
-    RGBKeyboardGUI(root, controller.send_keys)
+    RGBKeyboardGUI(root, controller.send_keys, config_file)
 
     def on_close() -> None:
         controller.close_device()

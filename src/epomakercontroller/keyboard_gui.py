@@ -1,17 +1,33 @@
 import tkinter as tk
 from tkinter.colorchooser import askcolor as askcolour  # thats right
-from .commands.data.constants import KK, KeyboardKey
+from .commands.data.constants import KeyboardKey, KEYBOARD_KEYS_NAME_DICT
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
 from typing import Callable
+import json
+
+
+DEFAULT_KEY_WIDTH = 8
+DFAULT_KEY_HEIGHT = 4
 
 
 class RGBKeyboardGUI:
-    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None]):
+    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None], config_file: str):
         self.root = root
         self.root.title("RGB Keyboard (UK ISO Layout)")
         self.key_btn_dict: dict[KeyboardKey, tk.Button] = {}
         self.selected_key: set[KeyboardKey] = set()
         self.key_colours: dict[KeyboardKey, str | None] = {}
+
+        self.col_offset = 0
+        self.row_offset = 0
+        self.key_width = DEFAULT_KEY_WIDTH
+        self.key_height = DFAULT_KEY_HEIGHT
+
+        with open(
+            config_file, "r"
+        ) as f:
+            self.layout_data = json.load(f)
+
         self.setup_ui()
         self.root.bind("<Return>", self.apply_colour_to_selected_keys)
 
@@ -19,187 +35,85 @@ class RGBKeyboardGUI:
         self.callback = callback
 
     def _strip_keyname(self, key: str) -> str:
-        dont_need_in_name = ["NUMROW", "NUMPAD", "LEFT_", "RIGHT_"]
+        dont_need_in_name = ["NR", "NP", "LEFT_", "RIGHT_"]
         for dont_need in dont_need_in_name:
             key = key.replace(dont_need, "")
         return key.strip("_")
 
+    def _handle_customization(self, item: tuple[str, int]) -> bool:
+        identifier, value = item
+        if identifier == "w":
+            self.key_width = int(DEFAULT_KEY_WIDTH * value)
+            return True
+        elif identifier == "h":
+            self.key_height = int(DFAULT_KEY_HEIGHT * value)
+            return True
+        elif identifier == "x":
+            self.col_offset += int(DEFAULT_KEY_WIDTH * value)
+        elif identifier == "y":
+            self.row_offset += int(DFAULT_KEY_HEIGHT * value)
+        else:
+            print(f"Warning: Unknown customization identifier: {identifier}")
+
+        return False
+
     def setup_ui(self) -> None:
-        layout = [
-            [
-                KK.ESC,
-                KK.F1,
-                KK.F2,
-                KK.F3,
-                KK.F4,
-                KK.F5,
-                KK.F6,
-                KK.F7,
-                KK.F8,
-                KK.F9,
-                KK.F10,
-                KK.F11,
-                KK.F12,
-                None,
-                KK.DEL,
-                KK.PGUP,
-                KK.PGDOWN,
-                KK.DIAL,
-            ],
-            [
-                KK.BACKQUOTE,
-                KK.NUMROW_1,
-                KK.NUMROW_2,
-                KK.NUMROW_3,
-                KK.NUMROW_4,
-                KK.NUMROW_5,
-                KK.NUMROW_6,
-                KK.NUMROW_7,
-                KK.NUMROW_8,
-                KK.NUMROW_9,
-                KK.NUMROW_0,
-                KK.NUMROW_MINUS,
-                KK.NUMROW_EQUAL,
-                KK.BACKSPACE,
-                None,
-                KK.NUMLOCK,
-                KK.NUMPAD_SLASH,
-                KK.NUMPAD_ASTERISK,
-                KK.NUMPAD_MINUS,
-            ],
-            [
-                KK.TAB,
-                KK.Q,
-                KK.W,
-                KK.E,
-                KK.R,
-                KK.T,
-                KK.Y,
-                KK.U,
-                KK.I,
-                KK.O,
-                KK.P,
-                KK.LEFT_BRACKET,
-                KK.RIGHT_BRACKET,
-                KK.ENTER,
-                None,
-                KK.NUMPAD_7,
-                KK.NUMPAD_8,
-                KK.NUMPAD_9,
-                KK.NUMPAD_PLUS,
-            ],
-            [
-                KK.CAPS,
-                KK.A,
-                KK.S,
-                KK.D,
-                KK.F,
-                KK.G,
-                KK.H,
-                KK.J,
-                KK.K,
-                KK.L,
-                KK.SEMICOLON,
-                KK.QUOTE,
-                KK.HASH,
-                None,
-                None,
-                KK.NUMPAD_4,
-                KK.NUMPAD_5,
-                KK.NUMPAD_6,
-            ],
-            [
-                KK.LEFT_SHIFT,
-                KK.BACKSLASH,
-                KK.Z,
-                KK.X,
-                KK.C,
-                KK.V,
-                KK.B,
-                KK.N,
-                KK.M,
-                KK.COMMA,
-                KK.DOT,
-                KK.SLASH,
-                KK.RIGHT_SHIFT,
-                KK.UP,
-                None,
-                KK.NUMPAD_1,
-                KK.NUMPAD_2,
-                KK.NUMPAD_3,
-                KK.NUMPAD_ENTER,
-            ],
-            [
-                KK.LEFT_CTRL,
-                KK.LEFT_WIN,
-                KK.LEFT_ALT,
-                KK.SPACE,
-                KK.RIGHT_ALT,
-                KK.FN,
-                KK.RIGHT_CTRL,
-                None,
-                KK.LEFT,
-                KK.DOWN,
-                KK.RIGHT,
-                KK.NUMPAD_0,
-                KK.NUMPAD_DOT,
-            ],
-        ]
+        customized = False
+        for row in self.layout_data:
+            keyboardkeys_row: list[KeyboardKey] = []
+            for col in row:
+                if isinstance(col, dict):
+                    # A dictionary entry means set some customizations for the proceeding key
+                    for item in col.items():
+                        customized = customized or self._handle_customization(item)
+                else:
+                    display_str = col
+                    state = "disabled"
+                    command = None
 
-        special_keys = {
-            KK.BACKSPACE: {"width": 8},
-            KK.TAB: {"width": 7},
-            KK.CAPS: {"width": 7},
-            KK.ENTER: {"width": 6, "height": 4, "rowspan": 2},
-            KK.LEFT_SHIFT: {"width": 7},
-            KK.RIGHT_SHIFT: {"width": 9},
-            KK.LEFT_CTRL: {"width": 5},
-            KK.RIGHT_CTRL: {"width": 5},
-            KK.SPACE: {"width": 20, "columnspan": 5},
-            KK.LEFT_ALT: {"width": 5},
-            KK.RIGHT_ALT: {"width": 5},
-            KK.FN: {"width": 5},
-            KK.ESC: {"padx": (2, 10)},
-            KK.DEL: {"padx": (10, 2)},
-            KK.NUMPAD_ENTER: {"height": 6, "rowspan": 2},
-            KK.NUMPAD_PLUS: {"height": 6, "rowspan": 2},
-        }
+                    # Get the corresponding key if it exists
+                    key = KEYBOARD_KEYS_NAME_DICT.get(col, None)
+                    if key:
+                        display_str = key.display_str
+                        state = "normal"
+                        command = lambda k=key: self.select_key(k)
+                        keyboardkeys_row.append(key)
+                    else:
+                        print(
+                            f"Warning: key from config json with name {col} does not match any KeyboardKey"
+                        )
 
-        for row, keys in enumerate(layout):
-            col_offset = 0
-            for col, key in enumerate(keys):
-                if key is None:
-                    col_offset += 1
-                    continue
+                    # Create the button
+                    btn = tk.Button(
+                        self.root,
+                        text=display_str,
+                        width=self.key_width,
+                        height=self.key_height,
+                        command=command,
+                        state=state,
+                    )
+                    # Add to grid
+                    btn.grid(
+                        row=self.row_offset,
+                        column=self.col_offset,
+                        columnspan=self.key_width,
+                        rowspan=self.key_height,
+                    )
 
-                special_key = special_keys.get(key, {})
+                    if key:
+                        self.key_btn_dict[key] = btn
+                        self.key_colours[key] = None
 
-                width = special_key.get("width", 4)
-                height = special_key.get("height", 2)
-                columnspan = special_key.get("columnspan", 1)
-                rowspan = special_key.get("rowspan", 1)
-                padx = special_key.get("padx", 2)
-                pady = special_key.get("pady", 2)
+                    self.col_offset += self.key_width
 
-                btn = tk.Button(
-                    self.root,
-                    text=self._strip_keyname(key.name),
-                    width=width,
-                    height=height,
-                    command=lambda k=key: self.select_key(k),
-                )
+                    # Reset customizations
+                    if customized:
+                        customized = False
+                        self.key_width = DEFAULT_KEY_WIDTH
+                        self.key_height = DFAULT_KEY_HEIGHT
 
-                btn.grid(
-                    row=row,
-                    column=col_offset,
-                    columnspan=columnspan,
-                    rowspan=rowspan,
-                    padx=padx,
-                    pady=pady,
-                )
-                self.key_btn_dict[key] = btn
-                self.key_colours[key] = None
-                col_offset += columnspan
+            self.row_offset += DFAULT_KEY_HEIGHT
+            self.col_offset = 0
 
     def select_key(self, key: KeyboardKey) -> None:
         if key in self.selected_key:
