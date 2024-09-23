@@ -22,11 +22,11 @@ class Config:
     def __post_init__(self) -> None:
         config_path = None
         if self.type == ConfigType.CONF_LAYOUT:
-            config_path = pkg_resources.path(epomakercontroller.configs.layouts, self.filename)
+            with pkg_resources.path(epomakercontroller.configs.layouts, self.filename) as path:
+                config_path = str(path)
         elif self.type == ConfigType.CONF_KEYMAP:
-            config_path = pkg_resources.path(epomakercontroller.configs.keymaps, self.filename)
+            with pkg_resources.path(epomakercontroller.configs.keymaps, self.filename) as path:
+                config_path = str(path)
 
-        with open(
-            str(config_path), "r"
-        ) as f:
+        with open(config_path, "r") as f:
             self.data = json.load(f)
