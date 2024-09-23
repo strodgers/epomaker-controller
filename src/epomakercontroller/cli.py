@@ -179,12 +179,10 @@ def start_daemon(temp_key: str | None, test_mode: bool) -> None:
                 first = False
 
             # Send CPU usage
-            controller.send_cpu(get_cpu_usage(test_mode), from_daemon=True)
-            time.sleep(1)
+            controller.send_cpu(get_cpu_usage(test_mode))
 
             # Get device temperature using the provided key
             controller.send_temperature(get_device_temp(temp_key, test_mode))
-            time.sleep(1)
 
     except KeyboardInterrupt:
         click.echo("Daemon interrupted by user.")
