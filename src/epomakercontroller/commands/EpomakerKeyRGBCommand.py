@@ -9,18 +9,19 @@ from dataclasses import dataclass
 from typing import Iterator
 
 from .EpomakerCommand import EpomakerCommand, CommandStructure
+from ..keyboard_keys import KeyboardKeys, KeyboardKey
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
-from .data.constants import ALL_KEYBOARD_KEYS, KeyboardKey
+# from .data.constants import ALL_KEYBOARD_KEYS, KeyboardKey
 
 
 class KeyMap:
     """Map a KeyboardKey index to an RGB value."""
 
-    def __init__(self) -> None:
+    def __init__(self, all_keys: KeyboardKeys) -> None:
         """Initializes the KeyMap."""
         self.key_map: dict[KeyboardKey, tuple[int, int, int]] = {}
-        for key in ALL_KEYBOARD_KEYS:
+        for key in all_keys:
             self.key_map[key] = (0, 0, 0)
 
     def __getitem__(self, key: KeyboardKey) -> tuple[int, int, int]:

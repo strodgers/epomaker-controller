@@ -25,6 +25,9 @@ from .commands import (
     EpomakerKeyRGBCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
+from .keyboard_keys import KeyboardKeys
+import importlib.resources as pkg_resources
+import epomakercontroller.configs.keymaps
 
 VENDOR_ID = 0x3151
 # Some Epomaker keyboards seem to have have different product IDs
@@ -35,6 +38,10 @@ USE_WIRELESS = False
 PRODUCT_IDS = PRODUCT_IDS_WIRED
 if USE_WIRELESS:
     PRODUCT_IDS += PRODUCT_IDS_24G
+
+# Load the keymap config
+with pkg_resources.path(epomakercontroller.configs.keymaps, "EpomakerRT100.json") as path:
+    keyboard_keys = KeyboardKeys(path)
 
 
 class EpomakerController:
