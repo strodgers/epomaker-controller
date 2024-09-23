@@ -341,37 +341,43 @@ class EpomakerController:
         time_command = EpomakerTimeCommand.EpomakerTimeCommand(time)
         self._send_command(time_command)
 
-    def send_temperature(self, temperature: int) -> None:
+    def send_temperature(self, temperature: int | None, delay_seconds: int = 1) -> None:
         """Sends the temperature to the HID device.
 
         Args:
             temperature (int): The temperature value in C (0-100).
+            delay_seconds (int): Time waited after command is sent.
 
         Raises:
             ValueError: If the temperature is not in the range 0-100.
         """
+        if not temperature:
+            # Don't do anything if temperature is None
+            return
         if not self._assert_range(temperature):
             raise ValueError("Temperature must be in range 0-100")
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
+        print(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
+        time.sleep(delay_seconds)
 
-    def send_cpu(self, cpu: int, from_daemon: bool = False) -> None:
+    def send_cpu(self, cpu: int, delay_seconds: int = 1) -> None:
         """Sends the CPU percentage to the HID device.
 
         Args:
             cpu (int): The CPU percentage to send.
-            from_daemon (bool): Indicates if the command is from a daemon process
-                (default: False).
+            delay_seconds (int): Time waited after command is sent.
 
         Raises:
             ValueError: If the CPU percentage is not in the range 0-100 and
                 from_daemon is False.
         """
-        if not from_daemon:
-            if not self._assert_range(cpu):
-                raise ValueError("CPU percentage must be in range 0-100")
+        if not self._assert_range(cpu):
+            raise ValueError("CPU percentage must be in range 0-100")
         cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
+        print(f"Sending CPU {cpu}%")
         self._send_command(cpu_command)
+        time.sleep(delay_seconds)
 
     def send_keys(self, frames: list[EpomakerKeyRGBCommand.KeyboardRGBFrame]) -> None:
         """Sends key RGB frames to the HID device.
@@ -387,7 +393,3 @@ class EpomakerController:
         if self.device:
             self.device.close()
             self.device = None
-
-    def __del__(self) -> None:
-        """Destructor to ensure the device is closed."""
-        self.close_device()
