@@ -77,7 +77,6 @@ class KeyboardRGBFrame:
                 self.key_map[key] = overlay_frame.key_map[key]
 
 
-
 class EpomakerKeyRGBCommand(EpomakerCommand):
     """Change a selection of keys to specific RGB values."""
 

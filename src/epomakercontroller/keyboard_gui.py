@@ -3,6 +3,7 @@ from tkinter.colorchooser import askcolor as askcolour  # thats right
 from .commands.data.constants import KeyboardKey, KEYBOARD_KEYS_NAME_DICT
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
 from typing import Callable
+from typing import Literal
 import json
 
 
@@ -57,6 +58,11 @@ class RGBKeyboardGUI:
 
         return False
 
+    def _create_key_callback(self, key: KeyboardKey) -> Callable[[], None]:
+        def on_key_selected() -> None:
+            self.select_key(key)
+        return on_key_selected
+
     def setup_ui(self) -> None:
         customized = False
         for row in self.layout_data:
@@ -68,15 +74,19 @@ class RGBKeyboardGUI:
                         customized = customized or self._handle_customization(item)
                 else:
                     display_str = col
-                    state = "disabled"
-                    command = None
+                    state: Literal['normal', 'active', 'disabled'] = "disabled"
+
+                    # Dummy method to do nothing
+                    def noop() -> None:
+                        pass
+                    command = noop
 
                     # Get the corresponding key if it exists
                     key = KEYBOARD_KEYS_NAME_DICT.get(col, None)
                     if key:
                         display_str = key.display_str
                         state = "normal"
-                        command = lambda k=key: self.select_key(k)
+                        command = self._create_key_callback(key)
                         keyboardkeys_row.append(key)
                     else:
                         print(

@@ -17,7 +17,7 @@ from epomakercontroller.commands import (
 from epomakercontroller.commands.reports import Report
 import random
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import cv2
 
 # Set to True to display images
