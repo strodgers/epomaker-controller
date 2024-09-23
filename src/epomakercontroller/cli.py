@@ -16,6 +16,7 @@ import tkinter as tk
 import importlib.resources as pkg_resources
 import epomakercontroller.configs.layouts
 
+
 @click.group()
 def cli() -> None:
     """A simple CLI for the EpomakerController."""

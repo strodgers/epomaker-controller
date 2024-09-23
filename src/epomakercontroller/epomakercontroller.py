@@ -10,11 +10,10 @@ from json import dumps
 import os
 import time
 from typing import Any, Optional
-import hid
+import hid  # type: ignore[import-not-found]
 import signal
 import subprocess
 from types import FrameType
-from typing import Optional
 import re
 
 from .commands import (
