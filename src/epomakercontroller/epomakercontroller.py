@@ -11,7 +11,10 @@ import os
 import time
 from typing import Any, Optional
 import hid
+import signal
 import subprocess
+from types import FrameType
+from typing import Optional
 import re
 
 from .commands import (
@@ -72,6 +75,23 @@ class EpomakerController:
               may become unresponsive. It should work fine again if you unplug and plug
                it back in!"""
         )
+
+        # Set up signal handling
+        self._setup_signal_handling()
+
+    def _setup_signal_handling(self) -> None:
+        """Sets up signal handling to close the HID device on termination."""
+        signal.signal(signal.SIGINT, self._signal_handler)  # Handle Ctrl+C
+        signal.signal(signal.SIGTERM, self._signal_handler)  # Handle termination
+
+    def _signal_handler(self, sig: int, frame: Optional[FrameType]) -> None:
+        """Handles signals to ensure the HID device is closed."""
+        self.close_device()
+        os._exit(0)  # Exit immediately after closing the device
+
+    def __del__(self) -> None:
+        """Destructor to ensure the device is closed."""
+        self.close_device()
 
     def open_device(self, only_info: bool = False) -> bool:
         """Opens the USB HID device and prints device information.
