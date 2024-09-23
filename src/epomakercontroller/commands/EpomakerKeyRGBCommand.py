@@ -8,11 +8,12 @@ keyboard.
 from dataclasses import dataclass
 from typing import Iterator
 
+from epomakercontroller.configs.configs import Config
+
 from .EpomakerCommand import EpomakerCommand, CommandStructure
 from ..keyboard_keys import KeyboardKeys, KeyboardKey
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
-# from .data.constants import ALL_KEYBOARD_KEYS, KeyboardKey
 
 
 class KeyMap:
@@ -65,17 +66,18 @@ class KeyboardRGBFrame:
     time_ms: int = 0
     index: int = 0
 
-    @classmethod
-    def from_keys(cls, keys: set[KeyboardKey], colour: tuple[int, int, int], time_ms: int = 0) -> "KeyboardRGBFrame":
-        key_map = KeyMap()
-        for key in keys:
-            key_map[key] = colour
-        return cls(time_ms=time_ms, key_map=key_map)
+    # @classmethod
+    # def from_keys(cls, keys: set[KeyboardKey], colour: tuple[int, int, int], time_ms: int = 0) -> "KeyboardRGBFrame":
+    #     keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
+    #     mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+    #     key_map = KeyMap()
+    #     for key in keys:
+    #         key_map[key] = colour
+    #     return cls(time_ms=time_ms, key_map=key_map)
 
-    def overlay(self, overlay_frame: "KeyboardRGBFrame") -> None:
-        for key in ALL_KEYBOARD_KEYS:
-            if overlay_frame.key_map[key] != (0, 0, 0):
-                self.key_map[key] = overlay_frame.key_map[key]
+    def overlay(self, overlay_keys: set[KeyboardKey], colour: tuple[int, int, int]) -> None:
+        for key in overlay_keys:
+            self.key_map[key] = colour
 
 
 class EpomakerKeyRGBCommand(EpomakerCommand):

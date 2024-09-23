@@ -1,18 +1,21 @@
 import tkinter as tk
-from tkinter.colorchooser import askcolor as askcolour  # thats right
-from .commands.data.constants import KeyboardKey, KEYBOARD_KEYS_NAME_DICT
+from tkinter.colorchooser import askcolor as askcolour   # thats right
+
+from .keyboard_keys import KeyboardKey, KeyboardKeys
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
 from typing import Callable
-from typing import Literal
-import json
-
+from .configs.configs import Config
 
 DEFAULT_KEY_WIDTH = 8
 DFAULT_KEY_HEIGHT = 4
 
 
 class RGBKeyboardGUI:
-    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None], config_file: str):
+    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None], config: Config):
+        self.config_data = config.data
+        keyboard_keys = KeyboardKeys(config)
+        self.frame = KeyboardRGBFrame(KeyMap(keyboard_keys))
+
         self.root = root
         self.root.title("RGB Keyboard (UK ISO Layout)")
         self.key_btn_dict: dict[KeyboardKey, tk.Button] = {}
@@ -24,15 +27,11 @@ class RGBKeyboardGUI:
         self.key_width = DEFAULT_KEY_WIDTH
         self.key_height = DFAULT_KEY_HEIGHT
 
-        with open(
-            config_file, "r"
-        ) as f:
-            self.layout_data = json.load(f)
+        self.layout_data = config.data
 
         self.setup_ui()
         self.root.bind("<Return>", self.apply_colour_to_selected_keys)
 
-        self.frame = KeyboardRGBFrame(key_map=KeyMap())
         self.callback = callback
 
     def _strip_keyname(self, key: str) -> str:
@@ -65,7 +64,7 @@ class RGBKeyboardGUI:
 
     def setup_ui(self) -> None:
         customized = False
-        for row in self.layout_data:
+        for row in self.config_data:
             keyboardkeys_row: list[KeyboardKey] = []
             for col in row:
                 if isinstance(col, dict):
@@ -148,8 +147,7 @@ class RGBKeyboardGUI:
                     int(colour[3:5], 16),
                     int(colour[5:7], 16),
                 )
-                to_add_frame = KeyboardRGBFrame.from_keys(self.selected_key, (r, g, b))
-                self.frame.overlay(to_add_frame)
+                self.frame.overlay(self.selected_key, (r, g, b))
                 self.callback([self.frame])
 
                 print(f"Set {','.join([k.name for k in self.selected_key])} keys to {colour}")
