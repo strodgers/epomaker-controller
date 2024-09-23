@@ -160,12 +160,21 @@ class EpomakerController:
         with open(temp_file_path, "w") as temp_file:
             temp_file.write(rule_content)
 
-        # Move the file to the correct location using sudo
-        subprocess.run(["sudo", "mv", temp_file_path, rule_file_path], check=True)
+        # Move the file to the correct location, reload rules
 
-        # Reload udev rules
-        subprocess.run(["sudo", "udevadm", "control", "--reload-rules"], check=True)
-        subprocess.run(["sudo", "udevadm", "trigger"], check=True)
+        move_command = ["mv", temp_file_path, rule_file_path]
+        reload_command = ["udevadm", "control", "--reload-rules"]
+        trigger_command = ["udevadm", "trigger"]
+
+        if os.geteuid() != 0:
+            # Use sudo if not root
+            move_command = ["sudo"] + move_command
+            reload_command = ["sudo"] + reload_command
+            trigger_command = ["sudo"] + trigger_command
+
+        subprocess.run(move_command, check=True)
+        subprocess.run(reload_command, check=True)
+        subprocess.run(trigger_command, check=True)
 
         print("Rule generated successfully")
 

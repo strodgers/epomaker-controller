@@ -1,0 +1,10 @@
+services:
+  epomaker-controller:
+    image: epomaker-controller
+    build: .
+    privileged: true            # Allows access to USB and other host devices
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/udev:/run/udev
+    stdin_open: true
+    tty: true
