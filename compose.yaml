@@ -1,0 +1,12 @@
+version: '3'
+services:
+  epomaker-controller:
+    image: epomaker-controller
+    privileged: true            # Allows access to USB and other host devices
+    volumes:
+      - /dev/bus/usb:/dev/bus/usb
+      - /run/udev:/run/udev
+    stdin_open: true
+    tty: true
+    command: /bin/bash
+
