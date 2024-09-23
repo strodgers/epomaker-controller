@@ -244,7 +244,7 @@ def set_keys() -> None:
         return
 
     root = tk.Tk()
-    RGBKeyboardGUI(root, controller.send_keys, CONFIGS[ConfigType.CONF_LAYOUT])
+    RGBKeyboardGUI(root, controller.send_keys, CONFIGS[ConfigType.CONF_LAYOUT], CONFIGS[ConfigType.CONF_KEYMAP])
 
     def on_close() -> None:
         controller.close_device()
