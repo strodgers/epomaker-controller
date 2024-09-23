@@ -1,19 +1,20 @@
 # src/epomakercontroller/cli.py
 """Simple CLI for the EpomakerController package."""
 
-import time
 import click
+import time
+import tkinter as tk
+
 from .commands import (
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
 )
 from .commands.data.constants import Profile
-from .epomakercontroller import EpomakerController
-from .keyboard_gui import RGBKeyboardGUI
-from .epomaker_utils import get_cpu_usage, get_device_temp, print_temp_devices
 from .configs.configs import Config, ConfigType
-import tkinter as tk
+from .epomakercontroller import EpomakerController
+from .epomaker_utils import get_cpu_usage, get_device_temp, print_temp_devices
 from .keyboard_keys import KeyboardKeys
+from .keyboard_gui import RGBKeyboardGUI
 
 DEFAULT_LAYOUT="EpomakerRT100-UK-ISO.json"
 DEFAULT_KEYMAPS="EpomakerRT100.json"
