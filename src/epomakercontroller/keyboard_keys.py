@@ -7,7 +7,12 @@ from .configs.configs import Config
 class KeyboardKey:
     name: str
     value: int
-    display_str: str
+    display_str: str | None = None
+
+    def __post_init__(self):
+        # If no display string, just use the name
+        if not self.display_str:
+            self.display_str = self.name
 
 
 class KeyboardKeys:
