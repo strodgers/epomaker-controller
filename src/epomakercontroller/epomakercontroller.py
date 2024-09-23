@@ -317,7 +317,7 @@ class EpomakerController:
             bool: True if the value is within the range, False otherwise.
         """
         if not r:
-            r = range(0, 100)
+            r = range(0, 100)  # 0 to 99
         return value in r
 
     def send_image(self, image_path: str) -> None:
@@ -345,17 +345,17 @@ class EpomakerController:
         """Sends the temperature to the HID device.
 
         Args:
-            temperature (int): The temperature value in C (0-100).
+            temperature (int): The temperature value in C (0-99).
             delay_seconds (int): Time waited after command is sent.
 
         Raises:
-            ValueError: If the temperature is not in the range 0-100.
+            ValueError: If the temperature is not in the range 0-99.
         """
         if not temperature:
             # Don't do anything if temperature is None
             return
         if not self._assert_range(temperature):
-            raise ValueError("Temperature must be in range 0-100")
+            raise ValueError("Temperature must be in range 0-99: ", temperature)
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         print(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
