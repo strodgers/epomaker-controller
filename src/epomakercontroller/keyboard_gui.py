@@ -142,5 +142,5 @@ class RGBKeyboardGUI:
                 self.frame.overlay(to_add_frame)
                 self.callback([self.frame])
 
-                print(f"Set {self.selected_key} keys to {colour}")
+                print(f"Set {','.join([k.name for k in self.selected_key])} keys to {colour}")
         self.selected_key.clear()
