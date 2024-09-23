@@ -66,15 +66,6 @@ class KeyboardRGBFrame:
     time_ms: int = 0
     index: int = 0
 
-    # @classmethod
-    # def from_keys(cls, keys: set[KeyboardKey], colour: tuple[int, int, int], time_ms: int = 0) -> "KeyboardRGBFrame":
-    #     keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
-    #     mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
-    #     key_map = KeyMap()
-    #     for key in keys:
-    #         key_map[key] = colour
-    #     return cls(time_ms=time_ms, key_map=key_map)
-
     def overlay(self, overlay_keys: set[KeyboardKey], colour: tuple[int, int, int]) -> None:
         for key in overlay_keys:
             self.key_map[key] = colour
