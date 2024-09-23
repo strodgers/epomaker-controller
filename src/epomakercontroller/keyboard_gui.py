@@ -3,7 +3,7 @@ from tkinter.colorchooser import askcolor as askcolour   # thats right
 
 from .keyboard_keys import KeyboardKey, KeyboardKeys
 from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
-from typing import Callable
+from typing import Callable, Literal
 from .configs.configs import Config
 
 DEFAULT_KEY_WIDTH = 8
