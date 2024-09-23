@@ -278,5 +278,16 @@ def set_keys() -> None:
     root.mainloop()
 
 
+@cli.command()
+@click.argument("key_index", type=int)
+@click.argument("key_combo", type=int)
+def set_key_map(key_index: int, key_combo: int) -> None:
+    """"""  # TODO
+    controller = EpomakerController(dry_run=False)
+    if controller.open_device():
+        controller.send_key_map(key_index, key_combo)
+    controller.close_device()
+
+
 if __name__ == "__main__":
     cli()

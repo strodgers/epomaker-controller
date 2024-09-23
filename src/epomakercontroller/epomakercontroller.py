@@ -21,6 +21,7 @@ from .commands import (
     EpomakerTempCommand,
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
+    EpomakerKeyMapCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
 
@@ -29,6 +30,7 @@ VENDOR_ID = 0x3151
 PRODUCT_IDS_WIRED = [0x4010, 0x4015]
 PRODUCT_IDS_24G = [0x4011, 0x4016]
 
+# TODO: This probably need to be a flag.
 USE_WIRELESS = False
 PRODUCT_IDS = PRODUCT_IDS_WIRED
 if USE_WIRELESS:
@@ -244,6 +246,11 @@ class EpomakerController:
     def _select_device_path(hid_infos: list[HIDInfo]) -> Optional[bytes]:
         """Select the appropriate device path based on interface preference."""
         device_name_filter = "Wireless" if USE_WIRELESS else "Wired"
+        # TODO: User needs to be able to configure this.
+        # Or we have to go by Vendor/Product IDs alone.
+        device_name_filter = "Gaming Keyboard"  # EP64
+        device_name_filter = "Gamakay TK68-HE"
+
         filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
 
         if not filtered_devices:
@@ -352,6 +359,10 @@ class EpomakerController:
         """
         rgb_command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
         self._send_command(rgb_command)
+
+    def send_key_map(self, key_index: int, key_combo: int) -> None:
+        key_map_command = EpomakerKeyMapCommand.EpomakerKeyMapCommand(key_index, key_combo)
+        self._send_command(key_map_command)
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
