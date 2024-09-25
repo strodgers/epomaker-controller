@@ -170,13 +170,9 @@
     },
     "LEFT_ALT",
     {
-      "a": 7,
       "w": 6.25
     },
     "SPACE",
-    {
-      "a": 4
-    },
     "RIGHT_ALT",
     "FN",
     "LEFT_CTRL",
