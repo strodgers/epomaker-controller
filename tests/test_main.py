@@ -4,8 +4,6 @@ import pytest
 from click.testing import CliRunner
 from typing import Iterator, Iterable
 from epomakercontroller.commands.data.constants import (
-    ALL_KEYBOARD_KEYS,
-    KEYBOARD_KEYS_NAME_DICT,
     IMAGE_DIMENSIONS,
     Profile,
 )
@@ -20,8 +18,20 @@ import numpy as np
 import matplotlib.pyplot as plt  # type: ignore
 import cv2
 
+from epomakercontroller.configs.configs import Config, ConfigType
+from epomakercontroller.keyboard_keys import KeyboardKeys
+
 # Set to True to display images
 DISPLAY = False
+
+
+DEFAULT_LAYOUT="EpomakerRT100-UK-ISO.json"
+DEFAULT_KEYMAPS="EpomakerRT100.json"
+
+CONFIGS = {
+    ConfigType.CONF_LAYOUT : Config(ConfigType.CONF_LAYOUT, DEFAULT_LAYOUT),
+    ConfigType.CONF_KEYMAP : Config(ConfigType.CONF_KEYMAP, DEFAULT_KEYMAPS),
+}
 
 
 @pytest.fixture
@@ -311,8 +321,9 @@ def compare_bytes_iterable(a: Iterable[bytes], b: Iterable[bytes]) -> None:
 def test_set_rgb_all_keys() -> None:
     """Test setting RGB values for all keys."""
     this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
-    mapping = EpomakerKeyRGBCommand.KeyMap()
-    for key in ALL_KEYBOARD_KEYS:
+    keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
+    mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+    for key in keyboard_keys:
         mapping[key] = (100, 5, 69)
     frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=50)]
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
@@ -327,19 +338,22 @@ def test_set_rgb_multiple_frames() -> None:
 
     this_test_data = all_test_data["EpomakerKeyRGBCommand-numrow-keys-different-frames"]
     frames = []
+    keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
 
     # frames 1 to 9 each set NUMROW_1 to NUMROW_9
     for i in range(1, 10):
-        mapping = EpomakerKeyRGBCommand.KeyMap()
-        key = KEYBOARD_KEYS_NAME_DICT[f"NUMROW_{i}"]
+        mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+        key = keyboard_keys.get_key_by_name(f"NUMROW_{i}")
+        assert key is not None, "Failed to get key by name"
         mapping[key] = (255, 255, 255)
         frames.append(
             EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=i * 10, index=i - 1)
         )
 
     # frame 10 has NUMROW_0 set
-    mapping = EpomakerKeyRGBCommand.KeyMap()
-    key = KEYBOARD_KEYS_NAME_DICT["NUMROW_0"]
+    mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+    key = keyboard_keys.get_key_by_name("NUMROW_0")
+    assert key is not None, "Failed to get key by name"
     mapping[key] = (255, 255, 255)
     frames.append(EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=100, index=9))
 
