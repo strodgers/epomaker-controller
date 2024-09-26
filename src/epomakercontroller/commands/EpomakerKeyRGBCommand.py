@@ -8,8 +8,6 @@ keyboard.
 from dataclasses import dataclass
 from typing import Iterator
 
-from epomakercontroller.configs.configs import Config
-
 from .EpomakerCommand import EpomakerCommand, CommandStructure
 from ..keyboard_keys import KeyboardKeys, KeyboardKey
 from .reports.Report import Report, BUFF_LENGTH

@@ -26,17 +26,7 @@ from .commands import (
     EpomakerKeyMapCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
-
-VENDOR_ID = 0x3151
-# Some Epomaker keyboards seem to have have different product IDs
-PRODUCT_IDS_WIRED = [0x4010, 0x4015]
-PRODUCT_IDS_24G = [0x4011, 0x4016]
-
-# TODO: This probably need to be a flag.
-USE_WIRELESS = False
-PRODUCT_IDS = PRODUCT_IDS_WIRED
-if USE_WIRELESS:
-    PRODUCT_IDS += PRODUCT_IDS_24G
+from .configs.configs import Config
 
 
 class EpomakerController:
@@ -58,7 +48,7 @@ class EpomakerController:
 
     def __init__(
         self,
-        vendor_id: int = VENDOR_ID,
+        config_main : Config,
         dry_run: bool = True,
     ) -> None:
         """Initializes the EpomakerController object.
@@ -67,7 +57,11 @@ class EpomakerController:
             vendor_id (int): The vendor ID of the USB HID device.
             dry_run (bool): Whether to run in dry run mode (default: True).
         """
-        self.vendor_id = vendor_id
+        self.config_main = config_main
+        self.vendor_id = config_main["VENDOR_ID"]
+        self.use_wireless = config_main["USE_WIRELESS"]
+        self.product_ids: list[int] = config_main["PRODUCT_IDS_WIRED"] if not self.use_wireless else config_main["PRODUCT_IDS_24G"]
+        self.device_description = config_main["DEVICE_DESCRIPTION_REGEX"]
         self.device = hid.device()
         self.dry_run = dry_run
         self.device_list: list[dict[str, Any]] = []
@@ -135,7 +129,7 @@ class EpomakerController:
         Returns:
             int | None: The product ID if found, None otherwise.
         """
-        for pid in PRODUCT_IDS:
+        for pid in self.product_ids:
             self.device_list = hid.enumerate(self.vendor_id, pid)
             if self.device_list:
                 return pid
@@ -219,24 +213,22 @@ class EpomakerController:
         event_path: str
         hid_path: Optional[str] = None
 
-    @staticmethod
-    def _find_device_path() -> Optional[bytes]:
+    def _find_device_path(self) -> Optional[bytes]:
         """Finds the device path with the specified interface number.
 
         Returns:
             Optional[bytes]: The device path if found, None otherwise.
         """
-        description = r"ROYUAN .* System Control"
         input_dir = "/sys/class/input"
-        hid_infos = EpomakerController._get_hid_infos(input_dir, description)
+        hid_infos = EpomakerController._get_hid_infos(input_dir, self.device_description)
 
         if not hid_infos:
-            print(f"No events found with description: '{description}'")
+            print(f"No events found with description: '{self.device_description}'")
             return None
 
         EpomakerController._populate_hid_paths(hid_infos)
 
-        return EpomakerController._select_device_path(hid_infos)
+        return self._select_device_path(hid_infos)
 
     @staticmethod
     def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:
@@ -270,15 +262,9 @@ class EpomakerController:
             match = re.search(r"\b\d+-[\d.]+:\d+\.\d+\b", hid_device_path)
             hi.hid_path = match.group(0) if match else None
 
-    @staticmethod
-    def _select_device_path(hid_infos: list[HIDInfo]) -> Optional[bytes]:
+    def _select_device_path(self, hid_infos: list[HIDInfo]) -> Optional[bytes]:
         """Select the appropriate device path based on interface preference."""
-        device_name_filter = "Wireless" if USE_WIRELESS else "Wired"
-        # TODO: User needs to be able to configure this.
-        # Or we have to go by Vendor/Product IDs alone.
-        device_name_filter = "Gaming Keyboard"  # EP64
-        device_name_filter = "Gamakay TK68-HE"
-
+        device_name_filter = "Wireless" if self.use_wireless else "Wired"
         filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
 
         if not filtered_devices:
