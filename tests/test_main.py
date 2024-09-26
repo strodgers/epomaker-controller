@@ -18,20 +18,13 @@ import numpy as np
 import matplotlib.pyplot as plt  # type: ignore
 import cv2
 
-from epomakercontroller.configs.configs import Config, ConfigType
+from epomakercontroller.configs.configs import ConfigType, get_all_configs
 from epomakercontroller.keyboard_keys import KeyboardKeys
 
 # Set to True to display images
 DISPLAY = False
 
-
-DEFAULT_LAYOUT="EpomakerRT100-UK-ISO.json"
-DEFAULT_KEYMAPS="EpomakerRT100.json"
-
-CONFIGS = {
-    ConfigType.CONF_LAYOUT : Config(ConfigType.CONF_LAYOUT, DEFAULT_LAYOUT),
-    ConfigType.CONF_KEYMAP : Config(ConfigType.CONF_KEYMAP, DEFAULT_KEYMAPS),
-}
+CONFIGS = get_all_configs()
 
 
 @pytest.fixture
