@@ -3,7 +3,7 @@ from typing import Iterator
 from .configs.configs import Config
 
 
-@dataclass
+@dataclass(frozen=True)
 class KeyboardKey:
     name: str
     value: int
@@ -12,7 +12,7 @@ class KeyboardKey:
     def __post_init__(self) -> None:
         # If no display string, just use the name
         if not self.display_str:
-            self.display_str = self.name
+            object.__setattr__(self, 'display_str', self.name)  # Get around dataclass being frozen
 
 
 class KeyboardKeys:
