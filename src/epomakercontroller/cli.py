@@ -254,7 +254,7 @@ def set_keys() -> None:
 @click.argument("key_index", type=int)
 @click.argument("key_combo", type=int)
 def remap_keys(key_index: int, key_combo: int) -> None:
-    """"""  # TODO
+    """Remap key functionality using a KeyboardKey index (from) and a USB HID index (to)"""
     controller = EpomakerController(CONFIGS[ConfigType.CONF_MAIN], dry_run=False)
     if controller.open_device():
         controller.remap_keys(key_index, key_combo)
