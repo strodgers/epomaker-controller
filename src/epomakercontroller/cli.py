@@ -261,5 +261,19 @@ def remap_keys(key_index: int, key_combo: int) -> None:
     controller.close_device()
 
 
+@cli.command()
+@click.option("--filter", default=None, help="Filter the keymap by key name")
+def show_keymap(filter: str | None) -> None:
+    data = CONFIGS[ConfigType.CONF_KEYMAP].data
+    assert data is not None, "ERROR: Config has no data"
+
+    to_show = list(data)
+    if filter:
+        to_show = [item for item in data if filter.lower() in item['name'].lower()]
+
+    for item in to_show:
+        print(f"{item['name']}: {item['value']}")
+
+
 if __name__ == "__main__":
     cli()
