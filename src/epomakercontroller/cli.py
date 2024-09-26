@@ -253,11 +253,11 @@ def set_keys() -> None:
 @cli.command()
 @click.argument("key_index", type=int)
 @click.argument("key_combo", type=int)
-def set_key_map(key_index: int, key_combo: int) -> None:
+def remap_keys(key_index: int, key_combo: int) -> None:
     """"""  # TODO
-    controller = EpomakerController(dry_run=False)
+    controller = EpomakerController(CONFIGS[ConfigType.CONF_MAIN], dry_run=False)
     if controller.open_device():
-        controller.send_key_map(key_index, key_combo)
+        controller.remap_keys(key_index, key_combo)
     controller.close_device()
 
 

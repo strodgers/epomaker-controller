@@ -19,11 +19,11 @@ import re
 from .commands import (
     EpomakerCommand,
     EpomakerImageCommand,
+    EpomakerRemapKeysCommand,
     EpomakerTimeCommand,
     EpomakerTempCommand,
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
-    EpomakerKeyMapCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
 from .configs.configs import Config
@@ -380,8 +380,8 @@ class EpomakerController:
         rgb_command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
         self._send_command(rgb_command)
 
-    def send_key_map(self, key_index: int, key_combo: int) -> None:
-        key_map_command = EpomakerKeyMapCommand.EpomakerKeyMapCommand(key_index, key_combo)
+    def remap_keys(self, key_index: int, key_combo: int) -> None:
+        key_map_command = EpomakerRemapKeysCommand.EpomakerRemapKeysCommand(key_index, key_combo)
         self._send_command(key_map_command)
 
     def close_device(self) -> None:
