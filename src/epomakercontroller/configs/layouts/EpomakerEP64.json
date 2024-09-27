@@ -1,0 +1,106 @@
+[
+    [
+        "ESC",
+        "NUMROW_1",
+        "NUMROW_2",
+        "NUMROW_3",
+        "NUMROW_4",
+        "NUMROW_5",
+        "NUMROW_6",
+        "NUMROW_7",
+        "NUMROW_8",
+        "NUMROW_9",
+        "NUMROW_0",
+        "NUMROW_MINUS",
+        "NUMROW_EQUAL",
+        {
+            "w": 2.0
+        },
+        "BACKSPACE"
+    ],
+    [
+        {
+            "w": 1.5
+        },
+        "TAB",
+        "Q",
+        "W",
+        "E",
+        "R",
+        "T",
+        "Y",
+        "U",
+        "I",
+        "O",
+        "P",
+        "OPEN_SQBR",
+        "CLOSE_SQBR",
+        {
+            "w": 1.5
+        },
+        "BACKSLASH"
+    ],
+    [
+        {
+            "w": 1.75
+        },
+        "CAPS",
+        "A",
+        "S",
+        "D",
+        "F",
+        "G",
+        "H",
+        "J",
+        "K",
+        "L",
+        "SEMICOLON",
+        "QUOTE",
+        {
+            "w": 2.25
+        },
+        "ENTER"
+    ],
+    [
+        {
+            "w": 2.0
+        },
+        "LEFT_SHIFT",
+        "Z",
+        "X",
+        "C",
+        "V",
+        "B",
+        "N",
+        "M",
+        "COMMA",
+        "DOT",
+        "SLASH",
+        "RIGHT_SHIFT",
+        "UP",
+        "DEL"
+    ],
+    [
+        {
+            "w": 1.25
+        },
+        "LEFT_CTRL",
+        {
+            "w": 1.25
+        },
+        "LEFT_WIN",
+        {
+            "w": 1.25
+        },
+        "LEFT_ALT",
+        {
+            "w": 6.25
+        },
+        "SPACE",
+        "RIGHT_CTRL",
+        "FN",
+        "LEFT",
+        "DOWN",
+        "RIGHT"
+    ]
+]
