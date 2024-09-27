@@ -19,6 +19,7 @@ import re
 from .commands import (
     EpomakerCommand,
     EpomakerImageCommand,
+    EpomakerRemapKeysCommand,
     EpomakerTimeCommand,
     EpomakerTempCommand,
     EpomakerCpuCommand,
@@ -378,6 +379,10 @@ class EpomakerController:
         """
         rgb_command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
         self._send_command(rgb_command)
+
+    def remap_keys(self, key_index: int, key_combo: int) -> None:
+        key_map_command = EpomakerRemapKeysCommand.EpomakerRemapKeysCommand(key_index, key_combo)
+        self._send_command(key_map_command)
 
     def close_device(self) -> None:
         """Closes the USB HID device."""

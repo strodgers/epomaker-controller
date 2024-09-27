@@ -250,5 +250,30 @@ def set_keys() -> None:
     root.mainloop()
 
 
+@cli.command()
+@click.argument("key_index", type=int)
+@click.argument("key_combo", type=int)
+def remap_keys(key_index: int, key_combo: int) -> None:
+    """Remap key functionality using a KeyboardKey index (from) and a USB HID index (to)"""
+    controller = EpomakerController(CONFIGS[ConfigType.CONF_MAIN], dry_run=False)
+    if controller.open_device():
+        controller.remap_keys(key_index, key_combo)
+    controller.close_device()
+
+
+@cli.command()
+@click.option("--filter", default=None, help="Filter the keymap by key name")
+def show_keymap(filter: str | None) -> None:
+    data = CONFIGS[ConfigType.CONF_KEYMAP].data
+    assert data is not None, "ERROR: Config has no data"
+
+    to_show = list(data)
+    if filter:
+        to_show = [item for item in data if filter.lower() in item['name'].lower()]
+
+    for item in to_show:
+        print(f"{item['name']}: {item['value']}")
+
+
 if __name__ == "__main__":
     cli()
