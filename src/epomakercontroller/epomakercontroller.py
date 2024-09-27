@@ -154,6 +154,32 @@ class EpomakerController:
             )
             self.device = None
 
+        assert self.device is not None
+
+        # Do some initialization, just copied from what official software does
+        set_reports = [
+            [0xfd] + [0x00] * 127,
+            [0x8f] + [0x00] * 3 + [0x70] + [0x00] * 123,
+            [0x87] + [0x00] * 3 + [0x78] + [0x00] * 123,
+            [0x80] + [0x00] * 3 + [0x7f] + [0x00] * 123,
+            [0xad] + [0x00] * 3 + [0x52] + [0x00] * 123,
+            [0x84] + [0x00] * 3 + [0x7b] + [0x00] * 123,
+            [0x85] + [0x00] * 3 + [0x7a] + [0x00] * 123,
+            [0x87] + [0x00] * 3 + [0x78] + [0x00] * 123,
+            [0x86] + [0x00] * 3 + [0x79] + [0x00] * 123,
+            [0x91] + [0x00] * 3 + [0x6e] + [0x00] * 123,
+            [0x92] + [0x00] * 3 + [0x6d] + [0x00] * 123,
+            [0x97] + [0x00] * 3 + [0x68] + [0x00] * 123,
+        ]
+        get_report_size = 64
+
+        print("Device opened, initializing..")
+        for report in set_reports:
+            self.device.send_feature_report(report)
+            report_id = report[0]  # Use the first byte of each report as report_id
+            self.device.get_feature_report(report_id, get_report_size)  # Ignore response
+        print("... Done!")
+
     def generate_udev_rule(self) -> None:
         """Generates a udev rule for the connected keyboard."""
         rule_content = (
