@@ -1,3 +1,4 @@
+from pathlib import Path
 import tkinter as tk
 from tkinter.colorchooser import askcolor as askcolour   # thats right
 
@@ -20,7 +21,7 @@ class RGBKeyboardGUI:
         self.frame = KeyboardRGBFrame(KeyMap(self.keyboard_keys))
 
         self.root = root
-        self.root.title("RGB Keyboard (UK ISO Layout)")
+        self.root.title(f"RGB Keyboard ({Path(config_layout.filename).stem})")
         self.key_btn_dict: dict[KeyboardKey, tk.Button] = {}
 
         # Keep track of multiple keys being selected

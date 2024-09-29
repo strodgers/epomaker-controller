@@ -32,11 +32,12 @@ DEFAULT_MAIN_CONFIG = {
 @dataclass
 class Config:
     type: ConfigType
-    filename: str | None = None
+    filename: str
     data: dict[Any, Any] | None = None
 
     def __post_init__(self) -> None:
-        if self.filename:
+        # If data not set manually, load it from the filename
+        if not self.data:
             with open(self._find_config_path(self.filename, self.type), "r") as f:
                 self.data = json.load(f)
                 return
@@ -116,6 +117,7 @@ def verify_main_config(in_config: Config) -> Config:
     # Merge the default values with the provided config, ensuring no missing keys
     out_config = Config(
         type=in_config.type,
+        filename=in_config.filename,
         data={**DEFAULT_MAIN_CONFIG, **in_config.data}
     )
 
