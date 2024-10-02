@@ -34,7 +34,7 @@ def upload_image(image_path: str) -> None:
         image_path (str): The path to the image file to upload.
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
             print("Uploading, you should see the status on the keyboard screen.\n"
                   "The keyboard will be unresponsive during this process.")
@@ -58,7 +58,7 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
         b (int): The blue value (0-255).
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
             controller.set_rgb_all_keys(r, g, b)
             click.echo(f"All keys set to RGB({r}, {g}, {b}) successfully.")
@@ -73,7 +73,7 @@ def cycle_light_modes() -> None:
 
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device():
             click.echo("Failed to open device.")
             return
@@ -109,7 +109,7 @@ def send_time() -> None:
 
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
             controller.send_time()
             click.echo("Time sent successfully.")
@@ -127,7 +127,7 @@ def send_temperature(temperature: int) -> None:
         temperature (int): The temperature value in C (0-100).
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
             controller.send_temperature(temperature)
             click.echo("Temperature sent successfully.")
@@ -145,7 +145,7 @@ def send_cpu(cpu: int) -> None:
         cpu (int): The CPU usage percentage (0-100).
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
             controller.send_cpu(cpu)
             click.echo("CPU usage sent successfully.")
@@ -164,7 +164,7 @@ def start_daemon(temp_key: str | None, test_mode: bool) -> None:
         temp_key (str): A label corresponding to the device to monitor.
     """
     try:
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device():
             click.echo("Failed to open device.")
             return
@@ -208,14 +208,14 @@ def dev(print_info: bool, generate_udev: bool) -> None:
     """
     if print_info:
         click.echo("Printing all available information about the connected keyboard.")
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device(only_info=True):
             click.echo("Failed to open device.")
             return
     elif generate_udev:
         click.echo("Generating udev rule for the connected keyboard.")
         # Init controller to get the PID
-        controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+        controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device(only_info=True):
             click.echo("Failed to open device.")
             return
@@ -229,7 +229,7 @@ def set_keys() -> None:
     """Open a simple GUI to set individual key colours.
 
     """
-    controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+    controller = EpomakerController(CONFIG_MAIN)
     if not controller.open_device():
         click.echo("Failed to open device.")
         return
@@ -250,7 +250,7 @@ def set_keys() -> None:
 @click.argument("key_combo", type=int)
 def remap_keys(key_index: int, key_combo: int) -> None:
     """Remap key functionality using a KeyboardKey index (from) and a USB HID index (to)"""
-    controller = EpomakerController(CONFIG_MAIN, dry_run=False)
+    controller = EpomakerController(CONFIG_MAIN)
     if controller.open_device():
         controller.remap_keys(key_index, key_combo)
     controller.close_device()

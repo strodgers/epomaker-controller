@@ -51,13 +51,13 @@ class EpomakerController:
     def __init__(
         self,
         config_main : Config,
-        dry_run: bool = True,
+        dry_run: bool = False,
     ) -> None:
         """Initializes the EpomakerController object.
 
         Args:
             vendor_id (int): The vendor ID of the USB HID device.
-            dry_run (bool): Whether to run in dry run mode (default: True).
+            dry_run (bool): Whether to run in dry run mode (default: False).
         """
 
         self.config_layout = Config(ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"])
