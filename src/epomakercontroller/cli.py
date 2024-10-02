@@ -146,26 +146,14 @@ def start_daemon(temp_key: str | None, test_mode: bool) -> None:
 
     Args:
         temp_key (str): A label corresponding to the device to monitor.
+        test_mode (bool): Send random ints instead of real values.
     """
     try:
         controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device():
             click.echo("Failed to open device.")
             return
-
-        first = True
-        while True:
-
-            if first:
-                # Set current time and date
-                controller.send_time()
-                first = False
-
-            # Send CPU usage
-            controller.send_cpu(get_cpu_usage(test_mode))
-
-            # Get device temperature using the provided key
-            controller.send_temperature(get_device_temp(temp_key, test_mode))
+        controller.start_daemon(temp_key, test_mode)
 
     except KeyboardInterrupt:
         click.echo("Daemon interrupted by user.")

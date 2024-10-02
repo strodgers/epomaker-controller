@@ -16,6 +16,8 @@ import subprocess
 from types import FrameType
 import re
 
+from epomakercontroller.epomaker_utils import get_cpu_usage, get_device_temp
+
 from .keyboard_keys import KeyboardKeys
 
 from .commands import (
@@ -455,6 +457,23 @@ class EpomakerController:
         """Set the keyboard profile."""
         profile_command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
         self._send_command(profile_command)
+
+    def start_daemon(self, temp_key: str | None, test_mode: bool) -> None:
+        """Start a daemon to update the CPU usage and optionally a temperature.
+
+        Args:
+            temp_key (str): A label corresponding to the device to monitor.
+            test_mode (bool): Send random ints instead of real values.
+        """
+        # Set current time and date
+        self.send_time()
+
+        while True:
+            # Send CPU usage
+            self.send_cpu(get_cpu_usage(test_mode))
+
+            # Get device temperature using the provided key
+            self.send_temperature(get_device_temp(temp_key, test_mode))
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
