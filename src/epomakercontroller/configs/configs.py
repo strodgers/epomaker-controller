@@ -99,8 +99,6 @@ def setup_main_config() -> Path:
     if not config_file.exists():
         print(f"Creating default config file at {config_file}")
         create_default_main_config(config_file)
-    else:
-        print(f"Config file already exists at {config_file}")
 
     return config_file
 
