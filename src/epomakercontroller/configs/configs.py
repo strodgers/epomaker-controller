@@ -38,7 +38,7 @@ class Config:
     def __post_init__(self) -> None:
         # If data not set manually, load it from the filename
         if not self.data:
-            with open(self._find_config_path(self.filename, self.type), "r") as f:
+            with open(self._find_config_path(self.filename, self.type), "r", encoding="utf-8") as f:
                 self.data = json.load(f)
                 return
 
@@ -75,14 +75,14 @@ def get_main_config_directory() -> Path:
 
 
 def create_default_main_config(config_file: Path) -> None:
-    with open(config_file, 'w') as f:
+    with open(config_file, 'w', encoding="utf-8") as f:
         json.dump(DEFAULT_MAIN_CONFIG, f, indent=4)
 
 
 def save_main_config(config: Config) -> None:
     config_dir = get_main_config_directory()
     config_file = config_dir / "config.json"
-    with open(config_file, 'w') as f:
+    with open(config_file, 'w', encoding="utf-8") as f:
         json.dump(config.data, f, indent=4)
 
 
