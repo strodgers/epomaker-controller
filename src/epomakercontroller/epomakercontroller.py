@@ -16,6 +16,8 @@ import subprocess
 from types import FrameType
 import re
 
+from .keyboard_keys import KeyboardKeys
+
 from .commands import (
     EpomakerCommand,
     EpomakerImageCommand,
@@ -399,6 +401,24 @@ class EpomakerController:
         print(f"Sending CPU {cpu}%")
         self._send_command(cpu_command)
         time.sleep(delay_seconds)
+
+    def set_rgb_all_keys(self, r: int, g: int, b: int) -> None:
+        # Make sure values are within range
+        for value in [r, g, b]:
+            self._assert_range(value, range(0, 256))
+
+        # Get all the keyboard keys
+        keyboard_keys = KeyboardKeys(self.config_keymap)
+
+        # Construct a KeyMap object
+        mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+
+        # Set all keys to r, g, b
+        for key in keyboard_keys:
+            mapping[key] = (r, g, b)
+
+        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping)]
+        self.send_keys(frames)
 
     def send_keys(self, frames: list[EpomakerKeyRGBCommand.KeyboardRGBFrame]) -> None:
         """Sends key RGB frames to the HID device.

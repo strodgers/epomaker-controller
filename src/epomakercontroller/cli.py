@@ -59,13 +59,8 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
     """
     try:
         controller = EpomakerController(CONFIG_MAIN, dry_run=False)
-        keyboard_keys = KeyboardKeys(controller.config_keymap)
-        mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
-        for key in keyboard_keys:
-            mapping[key] = (r, g, b)
-        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping)]
         if controller.open_device():
-            controller.send_keys(frames)
+            controller.set_rgb_all_keys(r, g, b)
             click.echo(f"All keys set to RGB({r}, {g}, {b}) successfully.")
     except Exception as e:
         click.echo(f"Failed to set RGB for all keys: {e}")
