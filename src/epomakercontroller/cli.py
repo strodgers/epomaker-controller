@@ -79,23 +79,7 @@ def cycle_light_modes() -> None:
             return
 
         print(f"Cycling through {len(Profile.Mode)} modes, waiting 5 seconds on each")
-        counter = 1
-        for mode in Profile.Mode:
-            profile = Profile(
-                mode=mode,
-                speed=Profile.Speed.DEFAULT,
-                brightness=Profile.Brightness.DEFAULT,
-                dazzle=Profile.Dazzle.OFF,
-                option=Profile.Option.OFF,
-                rgb=(180, 180, 180),
-            )
-            command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
-            controller._send_command(command)
-            click.echo(
-                f"[{counter}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}"
-            )
-            time.sleep(5)
-            counter += 1
+        controller.cycle_light_modes()
 
         click.echo("Cycled through all light modes successfully.")
     except Exception as e:

@@ -26,8 +26,9 @@ from .commands import (
     EpomakerTempCommand,
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
+    EpomakerProfileCommand,
 )
-from .commands.data.constants import BUFF_LENGTH
+from .commands.data.constants import BUFF_LENGTH, Profile
 from .configs.configs import Config, ConfigType
 
 
@@ -432,6 +433,28 @@ class EpomakerController:
     def remap_keys(self, key_index: int, key_combo: int) -> None:
         key_map_command = EpomakerRemapKeysCommand.EpomakerRemapKeysCommand(key_index, key_combo)
         self._send_command(key_map_command)
+
+    def cycle_light_modes(self, sleep_seconds: int = 5) -> None:
+        for counter, mode in enumerate(Profile.Mode):
+            profile = Profile(
+                mode=mode,
+                speed=Profile.Speed.DEFAULT,
+                brightness=Profile.Brightness.DEFAULT,
+                dazzle=Profile.Dazzle.OFF,
+                option=Profile.Option.OFF,
+                rgb=(180, 180, 180),
+            )
+            self.set_profile(profile)
+            print(
+                f"[{counter + 1}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}"
+            )
+            time.sleep(sleep_seconds)
+            counter += 1
+
+    def set_profile(self, profile: Profile) -> None:
+        """Set the keyboard profile."""
+        profile_command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
+        self._send_command(profile_command)
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
