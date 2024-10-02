@@ -2,10 +2,10 @@ from pathlib import Path
 import tkinter as tk
 from tkinter.colorchooser import askcolor as askcolour   # thats right
 
-from .utils.keyboard_keys import KeyboardKey, KeyboardKeys
-from .commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
+from .keyboard_keys import KeyboardKey, KeyboardKeys
+from ..commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
 from typing import Callable, Literal
-from .configs.configs import Config
+from ..configs.configs import Config
 
 DEFAULT_KEY_WIDTH = 8
 DFAULT_KEY_HEIGHT = 4

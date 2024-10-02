@@ -8,7 +8,7 @@ from .commands.data.constants import Profile
 from .configs.configs import load_main_config
 from .epomakercontroller import EpomakerController
 from .utils.epomaker_utils import print_temp_devices
-from .keyboard_gui import RGBKeyboardGUI
+from .utils.keyboard_gui import RGBKeyboardGUI
 
 CONFIG_MAIN = load_main_config()
 
