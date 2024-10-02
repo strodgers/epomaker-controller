@@ -18,7 +18,7 @@ import re
 
 from epomakercontroller.utils.epomaker_utils import get_cpu_usage, get_device_temp
 
-from .keyboard_keys import KeyboardKeys
+from .utils.keyboard_keys import KeyboardKeys
 
 from .commands import (
     EpomakerCommand,

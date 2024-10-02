@@ -19,7 +19,7 @@ import matplotlib.pyplot as plt  # type: ignore
 import cv2
 
 from epomakercontroller.configs.configs import ConfigType, get_all_configs
-from epomakercontroller.keyboard_keys import KeyboardKeys
+from epomakercontroller.utils.keyboard_keys import KeyboardKeys
 
 # Set to True to display images
 DISPLAY = False

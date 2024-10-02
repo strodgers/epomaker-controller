@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Iterator
-from .configs.configs import Config
+from ..configs.configs import Config
 
 
 @dataclass(frozen=True)

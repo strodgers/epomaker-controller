@@ -9,7 +9,7 @@ from dataclasses import dataclass
 from typing import Iterator
 
 from .EpomakerCommand import EpomakerCommand, CommandStructure
-from ..keyboard_keys import KeyboardKeys, KeyboardKey
+from ..utils.keyboard_keys import KeyboardKeys, KeyboardKey
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
 
