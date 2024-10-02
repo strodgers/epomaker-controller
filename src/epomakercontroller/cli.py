@@ -2,18 +2,12 @@
 """Simple CLI for the EpomakerController package."""
 
 import click
-import time
 import tkinter as tk
 
-from .commands import (
-    EpomakerKeyRGBCommand,
-    EpomakerProfileCommand,
-)
 from .commands.data.constants import Profile
 from .configs.configs import load_main_config
 from .epomakercontroller import EpomakerController
-from .epomaker_utils import get_cpu_usage, get_device_temp, print_temp_devices
-from .keyboard_keys import KeyboardKeys
+from .epomaker_utils import print_temp_devices
 from .keyboard_gui import RGBKeyboardGUI
 
 CONFIG_MAIN = load_main_config()
