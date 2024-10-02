@@ -26,7 +26,7 @@ from .commands import (
     EpomakerKeyRGBCommand,
 )
 from .commands.data.constants import BUFF_LENGTH
-from .configs.configs import Config
+from .configs.configs import Config, ConfigType
 
 
 class EpomakerController:
@@ -57,7 +57,10 @@ class EpomakerController:
             vendor_id (int): The vendor ID of the USB HID device.
             dry_run (bool): Whether to run in dry run mode (default: True).
         """
-        self.config_main = config_main
+
+        self.config_layout = Config(ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"])
+        self.config_keymap = Config(ConfigType.CONF_KEYMAP, config_main.data["CONF_KEYMAP_PATH"])
+
         self.vendor_id = config_main["VENDOR_ID"]
         self.use_wireless = config_main["USE_WIRELESS"]
         self.product_ids: list[int] = config_main["PRODUCT_IDS_WIRED"] if not self.use_wireless else config_main["PRODUCT_IDS_24G"]
