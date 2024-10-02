@@ -16,7 +16,7 @@ import subprocess
 from types import FrameType
 import re
 
-from epomakercontroller.epomaker_utils import get_cpu_usage, get_device_temp
+from epomakercontroller.utils.epomaker_utils import get_cpu_usage, get_device_temp
 
 from .keyboard_keys import KeyboardKeys
 
