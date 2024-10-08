@@ -22,6 +22,7 @@ class CommandStructure:
         number_of_footer_reports (int): The number of footer reports (default: 0). This
         is a footer that tells the device that the command is complete.
     """
+
     number_of_starter_reports: int = 1
     number_of_data_reports: int = 0
     number_of_footer_reports: int = 0
