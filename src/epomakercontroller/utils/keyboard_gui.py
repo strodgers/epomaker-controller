@@ -74,7 +74,7 @@ class RGBKeyboardGUI:
 
     def setup_ui(self) -> None:
         customized = False
-        for row in self.config_layout:
+        for row in self.config_layout:  # type: ignore
             keyboardkeys_row: list[KeyboardKey] = []
             for col in row:
                 if isinstance(col, dict):

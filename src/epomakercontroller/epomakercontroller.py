@@ -64,10 +64,10 @@ class EpomakerController:
         """
 
         self.config_layout = Config(
-            ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"]
+            ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"]  # type: ignore
         )
         self.config_keymap = Config(
-            ConfigType.CONF_KEYMAP, config_main.data["CONF_KEYMAP_PATH"]
+            ConfigType.CONF_KEYMAP, config_main.data["CONF_KEYMAP_PATH"]  # type: ignore
         )
 
         self.vendor_id = config_main["VENDOR_ID"]
