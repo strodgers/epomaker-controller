@@ -64,7 +64,9 @@ class KeyboardRGBFrame:
     time_ms: int = 0
     index: int = 0
 
-    def overlay(self, overlay_keys: set[KeyboardKey], colour: tuple[int, int, int]) -> None:
+    def overlay(
+        self, overlay_keys: set[KeyboardKey], colour: tuple[int, int, int]
+    ) -> None:
         for key in overlay_keys:
             self.key_map[key] = colour
 
@@ -86,9 +88,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
             number_of_data_reports=len(frames) * data_reports_per_frame,
             number_of_footer_reports=0,
         )
-        initial_report = Report(
-            initialization_data, index=0, checksum_index=None
-        )
+        initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report, structure)
 
         report_index = 1
@@ -96,8 +96,10 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         for frame in frames:
             for this_frame_report_index in range(0, data_reports_per_frame):
                 report = ReportWithData(
-                    ("19{this_frame_report_index:02x}{frame_index:02x}"
-                     "{total_frames:02x}{frame_time:02x}0000"),
+                    (
+                        "19{this_frame_report_index:02x}{frame_index:02x}"
+                        "{total_frames:02x}{frame_time:02x}0000"
+                    ),
                     index=report_index,
                     header_format_values={
                         "this_frame_report_index": this_frame_report_index,
@@ -134,9 +136,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         """
         return [r for r in self.reports if isinstance(r, ReportWithData)]
 
-    def report_data_contain_index(
-        self, report: ReportWithData, index: int
-    ) -> bool:
+    def report_data_contain_index(self, report: ReportWithData, index: int) -> bool:
         """Checks if the provided report contains the specified index.
 
         Uses BUFF_LENGTH - self.report_data_header_length so this function
@@ -153,9 +153,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         data_buffer_length = BUFF_LENGTH - self.report_data_header_length
         for report in self.get_data_reports():
             report_data = report[self.report_data_header_length :]
-            if report_index_count <= index < (
-                report_index_count + data_buffer_length
-            ):
+            if report_index_count <= index < (report_index_count + data_buffer_length):
                 return True
             report_index_count += len(report_data)
         return False

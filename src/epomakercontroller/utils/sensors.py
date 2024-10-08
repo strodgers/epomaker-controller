@@ -27,8 +27,10 @@ def get_device_temp(temp_key: str | None, test_mode: bool = False) -> int | None
     else:
         available_keys = list(temps.keys())
         print(
-            (f"Temperature key {temp_key!r} not found."
-                f"Available keys: {available_keys}")
+            (
+                f"Temperature key {temp_key!r} not found."
+                f"Available keys: {available_keys}"
+            )
         )
 
     return 0

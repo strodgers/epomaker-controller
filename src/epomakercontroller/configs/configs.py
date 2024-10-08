@@ -20,7 +20,7 @@ class ConfigType(Enum):
 DEFAULT_MAIN_CONFIG = {
     "VENDOR_ID": 0x3151,
     "PRODUCT_IDS_WIRED": [0x4010, 0x4015],
-    "PRODUCT_IDS_24G" : [0x4011, 0x4016],
+    "PRODUCT_IDS_24G": [0x4011, 0x4016],
     "USE_WIRELESS": False,
     "DEVICE_DESCRIPTION_REGEX": "ROYUAN .* System Control",
     # The file will be looked for in the install location first, otherwise use a full filepath
@@ -52,10 +52,14 @@ class Config:
 
         # Otherwise check for installed files
         if type == ConfigType.CONF_LAYOUT:
-            with pkg_resources.path(epomakercontroller.configs.layouts, filename) as path:
+            with pkg_resources.path(
+                epomakercontroller.configs.layouts, filename
+            ) as path:
                 return str(path)
         elif type == ConfigType.CONF_KEYMAP:
-            with pkg_resources.path(epomakercontroller.configs.keymaps, filename) as path:
+            with pkg_resources.path(
+                epomakercontroller.configs.keymaps, filename
+            ) as path:
                 return str(path)
 
         raise AttributeError(f"Unsupported ConfigType: {type.name}")
@@ -75,14 +79,14 @@ def get_main_config_directory() -> Path:
 
 
 def create_default_main_config(config_file: Path) -> None:
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         json.dump(DEFAULT_MAIN_CONFIG, f, indent=4)
 
 
 def save_main_config(config: Config) -> None:
     config_dir = get_main_config_directory()
     config_file = config_dir / "config.json"
-    with open(config_file, 'w') as f:
+    with open(config_file, "w") as f:
         json.dump(config.data, f, indent=4)
 
 
@@ -106,7 +110,9 @@ def setup_main_config() -> Path:
 
 
 def verify_main_config(in_config: Config) -> Config:
-    assert in_config.type == ConfigType.CONF_MAIN, "ERROR: verify_main_config only for Configs of type CONF_MAIN"
+    assert (
+        in_config.type == ConfigType.CONF_MAIN
+    ), "ERROR: verify_main_config only for Configs of type CONF_MAIN"
     assert in_config.data is not None, "ERROR: Config has no data"
 
     # Ensure no unsupported entries are present
@@ -118,7 +124,7 @@ def verify_main_config(in_config: Config) -> Config:
     out_config = Config(
         type=in_config.type,
         filename=in_config.filename,
-        data={**DEFAULT_MAIN_CONFIG, **in_config.data}
+        data={**DEFAULT_MAIN_CONFIG, **in_config.data},
     )
 
     # Write config back
@@ -145,9 +151,9 @@ def get_all_configs() -> dict[ConfigType, Config]:
     conf_keymap_path = main_config.data["CONF_KEYMAP_PATH"]
 
     all_configs = {
-        ConfigType.CONF_MAIN : main_config,
-        ConfigType.CONF_LAYOUT : Config(ConfigType.CONF_LAYOUT, conf_layout_path),
-        ConfigType.CONF_KEYMAP : Config(ConfigType.CONF_KEYMAP, conf_keymap_path)
+        ConfigType.CONF_MAIN: main_config,
+        ConfigType.CONF_LAYOUT: Config(ConfigType.CONF_LAYOUT, conf_layout_path),
+        ConfigType.CONF_KEYMAP: Config(ConfigType.CONF_KEYMAP, conf_keymap_path),
     }
 
     return all_configs

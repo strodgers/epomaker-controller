@@ -12,11 +12,14 @@ class KeyboardKey:
     def __post_init__(self) -> None:
         # If no display string, just use the name
         if not self.display_str:
-            object.__setattr__(self, 'display_str', self.name)  # Get around dataclass being frozen
+            object.__setattr__(
+                self, "display_str", self.name
+            )  # Get around dataclass being frozen
 
 
 class KeyboardKeys:
     """This class holds each keyboard key index along with it's name and display string"""
+
     def __init__(self, config: Config) -> None:
         assert config.data is not None, "ERROR: Config has no data"
 

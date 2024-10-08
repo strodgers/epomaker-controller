@@ -30,8 +30,10 @@ def upload_image(image_path: str) -> None:
     try:
         controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
-            print("Uploading, you should see the status on the keyboard screen.\n"
-                  "The keyboard will be unresponsive during this process.")
+            print(
+                "Uploading, you should see the status on the keyboard screen.\n"
+                "The keyboard will be unresponsive during this process."
+            )
             controller.send_image(image_path)
             click.echo("Image uploaded successfully.")
     except Exception as e:
@@ -63,9 +65,7 @@ def set_rgb_all_keys(r: int, g: int, b: int) -> None:
 
 @cli.command()
 def cycle_light_modes() -> None:
-    """Cycle through the light modes.
-
-    """
+    """Cycle through the light modes."""
     try:
         controller = EpomakerController(CONFIG_MAIN)
         if not controller.open_device():
@@ -83,9 +83,7 @@ def cycle_light_modes() -> None:
 
 @cli.command()
 def send_time() -> None:
-    """Send the current time to the Epomaker device.
-
-    """
+    """Send the current time to the Epomaker device."""
     try:
         controller = EpomakerController(CONFIG_MAIN)
         if controller.open_device():
@@ -133,7 +131,12 @@ def send_cpu(cpu: int) -> None:
 
 
 @cli.command()
-@click.option("--test", "test_mode", is_flag=True, help="Start daemon in test mode, sending random data.")
+@click.option(
+    "--test",
+    "test_mode",
+    is_flag=True,
+    help="Start daemon in test mode, sending random data.",
+)
 @click.argument("temp_key", type=str, required=False)
 def start_daemon(temp_key: str | None, test_mode: bool) -> None:
     """Start a daemon to update the CPU usage and optionally a temperature.
@@ -163,8 +166,18 @@ def list_temp_devices() -> None:
 
 
 @cli.command()
-@click.option("--print", "print_info", is_flag=True, help="Print all available information about the connected keyboard.")
-@click.option("--udev", "generate_udev", is_flag=True, help="Generate a udev rule for the connected keyboard.")
+@click.option(
+    "--print",
+    "print_info",
+    is_flag=True,
+    help="Print all available information about the connected keyboard.",
+)
+@click.option(
+    "--udev",
+    "generate_udev",
+    is_flag=True,
+    help="Generate a udev rule for the connected keyboard.",
+)
 def dev(print_info: bool, generate_udev: bool) -> None:
     """Various dev tools.
 
@@ -192,16 +205,16 @@ def dev(print_info: bool, generate_udev: bool) -> None:
 
 @cli.command()
 def set_keys() -> None:
-    """Open a simple GUI to set individual key colours.
-
-    """
+    """Open a simple GUI to set individual key colours."""
     controller = EpomakerController(CONFIG_MAIN)
     if not controller.open_device():
         click.echo("Failed to open device.")
         return
 
     root = tk.Tk()
-    RGBKeyboardGUI(root, controller.send_keys, controller.config_layout, controller.config_keymap)
+    RGBKeyboardGUI(
+        root, controller.send_keys, controller.config_layout, controller.config_keymap
+    )
 
     def on_close() -> None:
         controller.close_device()
@@ -231,7 +244,7 @@ def show_keymap(filter: str | None) -> None:
 
     to_show = list(data)
     if filter:
-        to_show = [item for item in data if filter.lower() in item['name'].lower()]
+        to_show = [item for item in data if filter.lower() in item["name"].lower()]
 
     for item in to_show:
         print(f"{item['name']}: {item['value']}")

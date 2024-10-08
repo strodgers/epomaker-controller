@@ -1,6 +1,6 @@
 from pathlib import Path
 import tkinter as tk
-from tkinter.colorchooser import askcolor as askcolour   # thats right
+from tkinter.colorchooser import askcolor as askcolour  # thats right
 
 from .keyboard_keys import KeyboardKey, KeyboardKeys
 from ..commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
@@ -12,7 +12,13 @@ DFAULT_KEY_HEIGHT = 4
 
 
 class RGBKeyboardGUI:
-    def __init__(self, root: tk.Tk, callback: Callable[[list[KeyboardRGBFrame]], None], config_layout: Config, config_keymap: Config):
+    def __init__(
+        self,
+        root: tk.Tk,
+        callback: Callable[[list[KeyboardRGBFrame]], None],
+        config_layout: Config,
+        config_keymap: Config,
+    ):
         # Layout for the display, keymap for the mapping to the keyboard
         self.config_layout = config_layout.data
         self.keyboard_keys = KeyboardKeys(config_keymap)
@@ -63,6 +69,7 @@ class RGBKeyboardGUI:
     def _create_key_callback(self, key: KeyboardKey) -> Callable[[], None]:
         def on_key_selected() -> None:
             self.select_key(key)
+
         return on_key_selected
 
     def setup_ui(self) -> None:
@@ -76,11 +83,12 @@ class RGBKeyboardGUI:
                         customized = customized or self._handle_customization(item)
                 else:
                     display_str = col
-                    state: Literal['normal', 'active', 'disabled'] = "disabled"
+                    state: Literal["normal", "active", "disabled"] = "disabled"
 
                     # Dummy method to do nothing
                     def noop() -> None:
                         pass
+
                     command = noop
 
                     # Get the corresponding key if it exists
@@ -154,5 +162,7 @@ class RGBKeyboardGUI:
                 self.frame.overlay(self.selected_key, (r, g, b))
                 self.callback([self.frame])
 
-                print(f"Set {','.join([k.name for k in self.selected_key])} keys to {colour}")
+                print(
+                    f"Set {','.join([k.name for k in self.selected_key])} keys to {colour}"
+                )
         self.selected_key.clear()
