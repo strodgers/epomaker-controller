@@ -214,7 +214,7 @@ class EpomakerController:
 
         # Write the rule to a temporary file
         temp_file_path = "/tmp/99-epomaker-rt100.rules"
-        with open(temp_file_path, "w") as temp_file:
+        with open(temp_file_path, "w", encoding="utf-8") as temp_file:
             temp_file.write(rule_content)
 
         # Move the file to the correct location, reload rules
@@ -282,7 +282,7 @@ class EpomakerController:
             if event.startswith("event"):
                 device_name_path = os.path.join(input_dir, event, "device", "name")
                 try:
-                    with open(device_name_path, "r") as f:
+                    with open(device_name_path, "r", encoding="utf-8") as f:
                         device_name = f.read().strip()
                         if re.search(description, device_name):
                             event_path = os.path.join(input_dir, event)
