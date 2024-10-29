@@ -7,7 +7,6 @@ def get_cpu_usage(test_mode: bool = False) -> int:
     if test_mode:
         return random.randint(0, 99)
     return int(round(psutil.cpu_percent(interval=1)))
-    # click.echo(f"CPU Usage: {cpu_usage}%, sending {cpu_usage_rounded}%")
 
 
 def get_device_temp(temp_key: str | None, test_mode: bool = False) -> int | None:
@@ -28,8 +27,10 @@ def get_device_temp(temp_key: str | None, test_mode: bool = False) -> int | None
     else:
         available_keys = list(temps.keys())
         print(
-            (f"Temperature key {temp_key!r} not found."
-                f"Available keys: {available_keys}")
+            (
+                f"Temperature key {temp_key!r} not found."
+                f"Available keys: {available_keys}"
+            )
         )
 
     return 0
