@@ -9,15 +9,15 @@ from datetime import datetime
 from json import dumps
 import os
 import time
-from typing import Any, Optional
+from typing import Any, Callable, Optional
 import hid  # type: ignore[import-not-found]
 import signal
 import subprocess
 from types import FrameType
 import re
 
-from epomakercontroller.utils.sensors import get_cpu_usage, get_device_temp
-
+from .utils.sensors import get_cpu_usage, get_device_temp
+from .utils.time_helper import TimeHelper
 from .utils.keyboard_keys import KeyboardKeys
 
 from .commands import (
@@ -322,24 +322,26 @@ class EpomakerController:
             else None
         )
 
-    def _send_command(
-        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1
-    ) -> None:
+    def _send_command(self, command: EpomakerCommand.EpomakerCommand) -> None:
         """Sends a command to the HID device.
 
         Args:
             command (EpomakerCommand): The command to send.
-            sleep_time (float): The time to sleep between sending packets
-                (default: 0.1).
         """
+        # Make sure device is opened and connected
+        assert self.device, "Device is not set!"
+        try:
+            self.device.get_product_string()
+        except:  # noqa: E722
+            raise IOError("Could not communicate with device")
+
         assert command.report_data_prepared, "Report data not prepared"
         for packet in command:
             assert len(packet) == BUFF_LENGTH
             if self.dry_run:
                 print(f"Dry run: skipping command send: {packet!r}")
-            elif self.device:
+            else:
                 self.device.send_feature_report(packet.get_all_bytes())
-            time.sleep(sleep_time)
 
     @staticmethod
     def _assert_range(value: int, r: range | None = None) -> bool:
@@ -364,7 +366,7 @@ class EpomakerController:
         """
         image_command = EpomakerImageCommand.EpomakerImageCommand()
         image_command.encode_image(image_path)
-        self._send_command(image_command, sleep_time=0.01)
+        self._send_command(image_command)
 
     def send_time(self, time: datetime | None = None) -> None:
         """Sends `time` to the HID device.
@@ -377,7 +379,7 @@ class EpomakerController:
         time_command = EpomakerTimeCommand.EpomakerTimeCommand(time)
         self._send_command(time_command)
 
-    def send_temperature(self, temperature: int | None, delay_seconds: int = 1) -> None:
+    def send_temperature(self, temperature: int | None) -> None:
         """Sends the temperature to the HID device.
 
         Args:
@@ -395,9 +397,8 @@ class EpomakerController:
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         print(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
-        time.sleep(delay_seconds)
 
-    def send_cpu(self, cpu: int, delay_seconds: int = 1) -> None:
+    def send_cpu(self, cpu: int) -> None:
         """Sends the CPU percentage to the HID device.
 
         Args:
@@ -413,7 +414,6 @@ class EpomakerController:
         cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
         print(f"Sending CPU {cpu}%")
         self._send_command(cpu_command)
-        time.sleep(delay_seconds)
 
     def set_rgb_all_keys(self, r: int, g: int, b: int) -> None:
         # Make sure values are within range
@@ -482,10 +482,15 @@ class EpomakerController:
 
         while True:
             # Send CPU usage
+            th_cpu = TimeHelper(min_duration=1.6)
             self.send_cpu(get_cpu_usage(test_mode))
+            del th_cpu
 
             # Get device temperature using the provided key
-            self.send_temperature(get_device_temp(temp_key, test_mode))
+            if temp_key or test_mode:
+                th_temp = TimeHelper(min_duration=1.6)
+                self.send_temperature(get_device_temp(temp_key, test_mode))
+                del th_temp
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
