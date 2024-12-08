@@ -155,7 +155,7 @@ def start_daemon(temp_key: str | None, test_mode: bool) -> None:
     except KeyboardInterrupt:
         click.echo("Daemon interrupted by user.")
     except Exception as e:
-        click.echo(f"Failed to start daemon: {e}")
+        click.echo(f"Error in start-daemon: {e}")
     controller.close_device()
 
 
