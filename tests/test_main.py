@@ -276,7 +276,7 @@ def test_encode_image_formats() -> None:
     # Create a dummy 10x10 image for testing
     dummy_img = np.random.randint(0, 256, (10, 10, 3), dtype=np.uint8)
 
-    temp_directory = tempfile.TemporaryDirectory(delete=True)
+    temp_directory = tempfile.TemporaryDirectory()
     for fmt in supported_formats:
         output_path = os.path.join(temp_directory.name, f"test_image.{fmt}")
         success = cv2.imwrite(output_path, dummy_img)
