@@ -190,10 +190,6 @@ class EpomakerController:
         print("Device opened, initializing..")
         for report in set_reports:
             self.device.send_feature_report(report)
-            report_id = report[0]  # Use the first byte of each report as report_id
-            self.device.get_feature_report(
-                report_id, get_report_size
-            )  # Ignore response
         print("... Done!")
 
     def generate_udev_rule(self) -> None:
