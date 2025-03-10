@@ -1,5 +1,7 @@
 """Test cases for the __main__ module."""
 
+import os
+import tempfile
 import pytest
 from click.testing import CliRunner
 from typing import Iterator, Iterable
@@ -266,6 +268,22 @@ def test_encode_image_command() -> None:
 
         assert np.all(np.array(difference) <= 8)
         i += 1
+
+
+def test_encode_image_formats() -> None:
+    supported_formats = ["png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp"]
+
+    # Create a dummy 10x10 image for testing
+    dummy_img = np.random.randint(0, 256, (10, 10, 3), dtype=np.uint8)
+
+    temp_directory = tempfile.TemporaryDirectory(delete=True)
+    for fmt in supported_formats:
+        output_path = os.path.join(temp_directory.name, f"test_image.{fmt}")
+        success = cv2.imwrite(output_path, dummy_img)
+        assert success, f"Failed to save: {output_path}"
+
+        command = EpomakerImageCommand.EpomakerImageCommand()
+        command.encode_image(output_path)
 
 
 def test_checksum() -> None:
