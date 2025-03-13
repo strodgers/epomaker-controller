@@ -22,6 +22,7 @@ import cv2
 
 from epomakercontroller.configs.configs import ConfigType, get_all_configs
 from epomakercontroller.utils.keyboard_keys import KeyboardKeys
+from epomakercontroller.commands.EpomakerImageCommand import SUPPORTED_FORMATS
 
 # Set to True to display images
 DISPLAY = False
@@ -271,13 +272,11 @@ def test_encode_image_command() -> None:
 
 
 def test_encode_image_formats() -> None:
-    supported_formats = ["png", "jpg", "jpeg", "bmp", "tiff", "tif", "webp"]
-
     # Create a dummy 10x10 image for testing
     dummy_img = np.random.randint(0, 256, (10, 10, 3), dtype=np.uint8)
 
     temp_directory = tempfile.TemporaryDirectory()
-    for fmt in supported_formats:
+    for fmt in SUPPORTED_FORMATS:
         output_path = os.path.join(temp_directory.name, f"test_image.{fmt}")
         success = cv2.imwrite(output_path, dummy_img)
         assert success, f"Failed to save: {output_path}"
