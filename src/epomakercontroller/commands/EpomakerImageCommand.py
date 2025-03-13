@@ -1,5 +1,6 @@
 """Command for sending images to the Epomaker keyboard."""
 
+import os
 import cv2
 import numpy as np
 
@@ -8,6 +9,7 @@ from .data.constants import IMAGE_DIMENSIONS
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
 
+SUPPORTED_FORMATS = [".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"]
 
 class EpomakerImageCommand(EpomakerCommand):
     """A command for sending images to the keyboard."""
@@ -67,7 +69,10 @@ class EpomakerImageCommand(EpomakerCommand):
         Args:
             image_path (str): The path to the image file.
         """
+        _, extension = os.path.splitext(image_path)
+        assert extension in SUPPORTED_FORMATS, f"Unsupported format\nSupported formats are: {SUPPORTED_FORMATS}"
         image = cv2.imread(image_path)
+        assert not isinstance(image, type(None)), f"Failed reading {image_path}"
         image = cv2.resize(image, IMAGE_DIMENSIONS)
         image = cv2.flip(image, 0)
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
