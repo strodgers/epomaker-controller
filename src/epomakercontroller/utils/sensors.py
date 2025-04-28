@@ -1,5 +1,3 @@
-from dataclasses import dataclass
-from typing import Any
 import psutil
 import random
 
@@ -70,6 +68,7 @@ def _get_temp_devices() -> dict[str, float] | None:
 
 
 def print_temp_devices() -> None:
+    """Print available temperature sensors by key and current temperature."""
     temps = _get_temp_devices()
     if not temps:
         print("No temperature sensors found.")
