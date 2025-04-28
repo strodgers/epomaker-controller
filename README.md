@@ -7,6 +7,12 @@ This project is still very rough around the edges!
 
 NOTE!!!: This currently only works over the USB connection!
 
+# Warning
+Some users have reported that running this software can cause video playback issues, which can be caused
+by repeated temperature sensor readings to a GPU. Given how this project (and, underneath, `psutil`) gathers
+all sensor temperatures in one shot, your GPU will still be getting sensor requests even if you are not
+specifically monitoring it (eg, you only care about NVME).
+
 ## Features
 
 - Upload images to the RT100 screen
