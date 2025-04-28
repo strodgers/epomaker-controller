@@ -1,28 +1,43 @@
+from dataclasses import dataclass
 from typing import Any
 import psutil
 import random
 
 
 def get_cpu_usage(test_mode: bool = False) -> int:
+    """Get the current CPU usage.
+
+    Args:
+        test_mode (bool): If true, return a random int between 0 and 99.
+
+    Returns:
+        int: CPU usage, or a random number if `test_mode`.
+    """
     if test_mode:
         return random.randint(0, 99)
     return int(round(psutil.cpu_percent(interval=1)))
 
 
-def get_device_temp(temp_key: str | None, test_mode: bool = False) -> int | None:
+def get_device_temp(temp_key: str, test_mode: bool = False) -> int:
+    """Get the temperature of a device specified by `temp_key`, or 0 if the key cannot be found.
+
+    Args:
+        temp_key (str): Key corresponding to a device.
+        test_mode (bool): If true, return a random int between 0 and 99.
+
+    Returns:
+        int: The temperature of the device, 0 if not found, or a random number if `test_mode`.
+    """
     if test_mode:
         return random.randint(0, 99)
 
-    if not temp_key:
-        return None
-
-    temps = get_temp_devices()
+    temps = _get_temp_devices()
     if not temps:
         return 0
 
     if temp_key in temps:
-        cpu_temp = temps[temp_key][0].current
-        return int(round(cpu_temp))
+        device_temp = temps[temp_key]
+        return int(round(device_temp))
 
     else:
         available_keys = list(temps.keys())
@@ -36,25 +51,30 @@ def get_device_temp(temp_key: str | None, test_mode: bool = False) -> int | None
     return 0
 
 
-def get_temp_devices() -> Any:
+def _get_temp_devices() -> dict[str, float] | None:
     try:
-        return psutil.sensors_temperatures()
+        hw_temperatures = psutil.sensors_temperatures()
     except AttributeError:
         print("Temperature monitoring not supported on this system.")
+        return None
 
-    return None
+    temperature_sensors: dict[str, float] = {}
+    for device_name, entries in hw_temperatures.items():
+        for index, entry in enumerate(entries):
+            # A single device may have multiple sensors, need to be able
+            # to access each one
+            device_key = f"{device_name}-{index}"
+            temperature_sensors[device_key] = entry.current
+
+    return temperature_sensors
 
 
 def print_temp_devices() -> None:
-    temps = get_temp_devices()
+    temps = _get_temp_devices()
     if not temps:
         print("No temperature sensors found.")
         return
 
-    for key, entries in temps.items():
-        print(f"\nTemperature key: {key}")
-        for entry in entries:
-            print(f"  Label: {entry.label or 'N/A'}")
-            print(f"  Current: {entry.current}°C")
-            print(f"  High: {entry.high or 'N/A'}°C")
-            print(f"  Critical: {entry.critical or 'N/A'}°C")
+    print("{0:20} {1}".format("DEVICE KEY", "CURRENT TEMPERATURE"))
+    for device_key, temp in temps.items():
+        print("{0:20} {1}°C".format(device_key, temp))
