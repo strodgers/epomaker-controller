@@ -1,6 +1,7 @@
 import psutil
 import random
-
+import gpustat
+from pynvml import NVMLError
 
 def get_cpu_usage(test_mode: bool = False) -> int:
     """Get the current CPU usage.
@@ -55,6 +56,14 @@ def _get_temp_devices() -> dict[str, float] | None:
     except AttributeError:
         print("Temperature monitoring not supported on this system.")
         return None
+    try:
+        gpu_stats = gpustat.new_query()
+    except OSError as e:
+        print(f"No NVIDIA sensors available: {e.message}")
+        gpu_stats = None
+    except NVMLError as e:
+        print(f"No NVIDIA driver available: {e}")
+        gpu_stats = None
 
     temperature_sensors: dict[str, float] = {}
     for device_name, entries in hw_temperatures.items():
@@ -63,6 +72,14 @@ def _get_temp_devices() -> dict[str, float] | None:
             # to access each one
             device_key = f"{device_name}-{index}"
             temperature_sensors[device_key] = entry.current
+
+    # Append any NVIDIA sensors
+    if gpu_stats:
+        for index, gpu_stat in enumerate(gpu_stats):
+            if "name" in gpu_stat.keys() and "temperature.gpu" in gpu_stat.keys():
+                device_name = gpu_stat["name"].replace(" ", "-")
+                device_key = f"{device_name}-{index}"
+                temperature_sensors[device_key] = gpu_stat["temperature.gpu"]
 
     return temperature_sensors
 
@@ -74,6 +91,7 @@ def print_temp_devices() -> None:
         print("No temperature sensors found.")
         return
 
-    print("{0:20} {1}".format("DEVICE KEY", "CURRENT TEMPERATURE"))
+    format_whitespace = len(max(temps.keys(), key=len)) + 10
+    print("{key:{whitespace}} {value}".format(key="DEVICE KEY", whitespace=format_whitespace, value="CURRENT TEMPERATURE"))
     for device_key, temp in temps.items():
-        print("{0:20} {1}°C".format(device_key, temp))
+        print("{key:{whitespace}} {value}°C".format(key=device_key, whitespace=format_whitespace, value=temp))

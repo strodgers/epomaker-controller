@@ -26,6 +26,7 @@ numpy = "<2.0"
 opencv-python-headless = "==4.10.0.82"
 psutil = ">=6.0.0"
 python-dateutil = "==2.8.2"
+gpustat = ">=1.1.1"
 
 [tool.poetry.dev-dependencies]
 matplotlib = "==3.5.3"
