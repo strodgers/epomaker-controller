@@ -461,10 +461,13 @@ class EpomakerController:
             del th_cpu
 
             # Get device temperature using the provided key
-            if temp_key or test_mode:
+            if temp_key:
                 th_temp = TimeHelper(min_duration=1.6)
                 self.send_temperature(get_device_temp(temp_key, test_mode))
                 del th_temp
+            elif test_mode:
+                self.send_temperature(get_device_temp("dummy_device", test_mode))
+                time.sleep(1.6)
 
     def close_device(self) -> None:
         """Closes the USB HID device."""
