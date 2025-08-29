@@ -9,11 +9,13 @@ from .configs.configs import load_main_config
 from .epomakercontroller import EpomakerController
 from .utils.sensors import print_temp_devices
 from .utils.keyboard_gui import RGBKeyboardGUI
+from .utils.app_version import retrieve_app_version
 
 CONFIG_MAIN = load_main_config()
 
 
 @click.group()
+@click.version_option(retrieve_app_version(), prog_name="EpomakerController")
 def cli() -> None:
     """A simple CLI for the EpomakerController."""
     pass
