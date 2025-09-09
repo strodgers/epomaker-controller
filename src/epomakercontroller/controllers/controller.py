@@ -2,7 +2,7 @@ from __future__ import annotations
 import typing
 import signal
 
-from abc import abstractmethod
+from abc import ABCMeta, abstractmethod
 
 from epomakercontroller.utils.decorators import noexcept
 
@@ -11,7 +11,7 @@ if typing.TYPE_CHECKING:
     from typing import Optional
 
 
-class ControllerBase:
+class ControllerBase(metaclass=ABCMeta):
     """
     Just a base class for every type of controller.
     I assume you plan to support multiple keyboard types. Must be useful

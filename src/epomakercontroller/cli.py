@@ -11,6 +11,7 @@ from .epomakercontroller import EpomakerController
 from .utils.sensors import print_temp_devices
 from .utils.keyboard_gui import RGBKeyboardGUI
 from .utils.app_version import retrieve_app_version
+from .logger.logger import Logger
 
 CONFIG_MAIN = load_main_config()
 
@@ -23,7 +24,7 @@ def wrapped_command(func):
     def wrapper(*args, **kwargs):
         with EpomakerController(CONFIG_MAIN) as controller:
             if not controller.open_device():
-                click.echo("Could not find device")
+                Logger.log_error("Failed to open device")
                 return None
 
             result = func(controller, *args, **kwargs)
@@ -49,7 +50,7 @@ def upload_image(controller: EpomakerController, image_path: str) -> None:
         image_path (str): The path to the image file to upload.
     """
     controller.send_image(image_path)
-    click.echo("Image uploaded successfully.")
+    Logger.log_info("Image uploaded successfully.")
 
 
 @cli.command()
@@ -67,15 +68,15 @@ def set_rgb_all_keys(controller: EpomakerController, r: int, g: int, b: int) -> 
         b (int): The blue value (0-255).
     """
     controller.set_rgb_all_keys(r, g, b)
-    click.echo(f"All keys set to RGB({r}, {g}, {b}) successfully.")
+    Logger.log_info(f"All keys set to RGB({r}, {g}, {b}) successfully.")
 
 @cli.command()
 @wrapped_command
 def cycle_light_modes(controller: EpomakerController) -> None:
     """Cycle through the light modes."""
-    click.echo(f"Cycling through {len(Profile.Mode)} modes, waiting 5 seconds on each")
+    Logger.log_info(f"Cycling through {len(Profile.Mode)} modes, waiting 5 seconds on each")
     controller.cycle_light_modes()
-    click.echo("Cycled through all light modes successfully.")
+    Logger.log_info("Cycled through all light modes successfully.")
 
 
 @cli.command()
@@ -83,7 +84,7 @@ def cycle_light_modes(controller: EpomakerController) -> None:
 def send_time(controller: EpomakerController) -> None:
     """Send the current time to the Epomaker device."""
     controller.send_time()
-    click.echo("Time sent successfully.")
+    Logger.log_info("Time sent successfully.")
 
 
 @cli.command()
@@ -97,7 +98,7 @@ def send_temperature(controller: EpomakerController, temperature: int) -> None:
         temperature (int): The temperature value in C (0-100).
     """
     controller.send_temperature(temperature)
-    click.echo("Temperature sent successfully.")
+    Logger.log_info("Temperature sent successfully.")
 
 
 @cli.command()
@@ -111,7 +112,7 @@ def send_cpu(controller: EpomakerController, cpu: int) -> None:
         cpu (int): The CPU usage percentage (0-100).
     """
     controller.send_cpu(cpu)
-    click.echo("CPU usage sent successfully.")
+    Logger.log_info("CPU usage sent successfully.")
 
 
 @cli.command()
@@ -165,12 +166,9 @@ def dev(print_info: bool, generate_udev: bool) -> None:
     # but now we're doing it once
 
     controller = EpomakerController(CONFIG_MAIN)
-    try:
-        if not controller.open_device(only_info=True):
-            click.echo("Could not find device")
-            return
-    except ValueError as e:
-        click.echo(f"An error occurred: {e}")
+
+    if not controller.open_device(only_info=True):
+        Logger.log_error("Could not find device")
         return
 
     if print_info:
@@ -180,7 +178,7 @@ def dev(print_info: bool, generate_udev: bool) -> None:
         controller.generate_udev_rule()
     else:
         # It would be better to print help string or something like that
-        click.echo("No dev tool specified.")
+        Logger.log_error("No dev tool specified.")
         click.echo(dev.__doc__)
 
 
@@ -212,14 +210,19 @@ def remap_keys(controller: EpomakerController, key_index: int, key_combo: int) -
 
 @cli.command()
 @click.option("--filter", default=None, help="Filter the keymap by key name")
-def show_keymap(filter: str | None) -> None:
+def show_keymap(keymap_filter: str | None) -> None:
     controller = EpomakerController(CONFIG_MAIN, dry_run=True)
     data = controller.config_keymap.data
-    assert data is not None, "ERROR: Config has no data"
+
+    # It's better not to use assert in production
+    # asserts could be disabled, which will break this code segment
+    if not data:
+        Logger.log_error("No keymap data")
+        return
 
     to_show = list(data)
-    if filter:
-        to_show = [item for item in data if filter.lower() in item["name"].lower()]
+    if keymap_filter:
+        to_show = [item for item in data if keymap_filter.lower() in item["name"].lower()]
 
     for item in to_show:
         print(f"{item['name']}: {item['value']}")
