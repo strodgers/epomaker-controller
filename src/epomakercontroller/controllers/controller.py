@@ -1,12 +1,12 @@
 from __future__ import annotations
 import typing
 import signal
-import os
 
 from abc import abstractmethod
 
 
 if typing.TYPE_CHECKING:
+    from types import FrameType
     from typing import Optional
 
 
