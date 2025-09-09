@@ -4,6 +4,7 @@ import signal
 
 from abc import abstractmethod
 
+from epomakercontroller.utils.decorators import noexcept
 
 if typing.TYPE_CHECKING:
     from types import FrameType
@@ -17,20 +18,20 @@ class ControllerBase:
     """
 
     @abstractmethod
-    def try_open_device(self):
+    def open_device(self):
         # Resource lock
         raise NotImplementedError
 
     @abstractmethod
-    def try_close_device(self):
+    def close_device(self):
         # Resource unlock
         raise NotImplementedError
 
     def __enter__(self):
-        self.try_open_device()
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        self.try_close_device()
+        self.close_device()
 
     def _setup_signal_handling(self) -> None:
         """Sets up signal handling to close the HID device on termination."""
@@ -39,5 +40,5 @@ class ControllerBase:
 
     def _signal_handler(self, sig: int, _: Optional[FrameType]) -> None:
         """Handles signals to ensure the HID device is closed."""
-        self.try_close_device()
+        self.close_device()
         exit(sig)   # Pass code to system

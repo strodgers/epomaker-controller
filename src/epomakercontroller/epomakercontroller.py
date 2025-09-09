@@ -3,18 +3,18 @@
 This module contains the EpomakerController class, which represents a controller
 for an Epomaker USB HID device.
 """
+from __future__ import annotations
+import typing
 
 import dataclasses
 from datetime import datetime
 from json import dumps
 import os
 import time
-from typing import Any, Callable, Optional
 import hid  # type: ignore[import-not-found]
-import signal
 import subprocess
-from types import FrameType
 import re
+from typing import override
 
 from .utils.sensors import get_cpu_usage, get_device_temp
 from .utils.time_helper import TimeHelper
@@ -32,9 +32,14 @@ from .commands import (
 )
 from .commands.data.constants import BUFF_LENGTH, Profile
 from .configs.configs import Config, ConfigType
+from .controllers.controller import ControllerBase
 
 
-class EpomakerController:
+if typing.TYPE_CHECKING:
+    from typing import Any, Optional
+
+
+class EpomakerController(ControllerBase):
     """EpomakerController class represents a controller for an Epomaker USB HID device.
 
     Attributes:
@@ -62,6 +67,7 @@ class EpomakerController:
             vendor_id (int): The vendor ID of the USB HID device.
             dry_run (bool): Whether to run in dry run mode (default: False).
         """
+        super().__init__()
 
         self.config_layout = Config(
             ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"]  # type: ignore
@@ -90,37 +96,12 @@ class EpomakerController:
         # Set up signal handling
         self._setup_signal_handling()
 
-    def __enter__(self) -> "EpomakerController":
-        return self
-
-    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
-        self.close_device()
-        if exc_type:
-            print (f"{exc_val}")
-        return True
-
-    def _setup_signal_handling(self) -> None:
-        """Sets up signal handling to close the HID device on termination."""
-        signal.signal(signal.SIGINT, self._signal_handler)  # Handle Ctrl+C
-        signal.signal(signal.SIGTERM, self._signal_handler)  # Handle termination
-
-    def _signal_handler(self, sig: int, frame: Optional[FrameType]) -> None:
-        """Handles signals to ensure the HID device is closed."""
-        self.close_device()
-        os._exit(0)  # Exit immediately after closing the device
-
-    def __del__(self) -> None:
-        """Destructor to ensure the device is closed."""
-        self.close_device()
-
+    @override
     def open_device(self, only_info: bool = False) -> bool:
         """Opens the USB HID device and prints device information.
 
         Args:
             only_info (bool): Print device information and exit (default: False).
-
-        Raises:
-            ValueError: If no device is found with the specified interface number.
 
         Returns:
             bool: True if the device is opened successfully, False otherwise.
@@ -131,7 +112,7 @@ class EpomakerController:
 
         product_id = self._find_product_id()
         if not product_id:
-            raise ValueError("No Epomaker RT100 devices found")
+            return False
 
         if only_info:
             self._print_device_info()
@@ -141,12 +122,24 @@ class EpomakerController:
         # This way we don't block usage of the keyboard whilst the device is open
         device_path = self._find_device_path()
         if device_path is None:
-            raise ValueError("No device found")
-        self._open_device(device_path)
-
+            return False
+        try:
+            self._open_device(device_path)
+        except IOError as e:
+            print (e)
+            return False
         return self.device is not None
 
-    def _find_product_id(self) -> int | None:
+    @override
+    def close_device(self) -> None:
+        """Closes the USB HID device."""
+        if not self.device:
+            return
+
+        self.device.close()
+        self.device = None
+
+    def _find_product_id(self) -> Optional[int]:
         """Finds the product ID of the device using a list of possible product IDs.
 
         Returns:
@@ -477,9 +470,3 @@ class EpomakerController:
             elif test_mode:
                 self.send_temperature(get_device_temp("dummy_device", test_mode))
                 time.sleep(1.6)
-
-    def close_device(self) -> None:
-        """Closes the USB HID device."""
-        if self.device:
-            self.device.close()
-            self.device = None
