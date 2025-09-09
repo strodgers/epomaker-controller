@@ -1,21 +1,23 @@
 from __future__ import annotations
+import importlib.resources as pkg_resources
+
 import typing
+import os
+import json
+
+from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
-import json
-import os
-from pathlib import Path
-from typing import Any
 from src.epomakercontroller.logger.logger import Logger
 
 import epomakercontroller.configs.layouts
 import epomakercontroller.configs.keymaps
-import importlib.resources as pkg_resources
 
 from .constants import CONFIG_DIRECTORY, CONFIG_NAME, DEFAULT_MAIN_CONFIG
 
+
 if typing.TYPE_CHECKING:
-    from typing import Optional
+    from typing import Optional, Any
 
 
 class ConfigType(Enum):
