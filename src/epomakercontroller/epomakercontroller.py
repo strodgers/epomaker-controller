@@ -90,6 +90,15 @@ class EpomakerController:
         # Set up signal handling
         self._setup_signal_handling()
 
+    def __enter__(self) -> "EpomakerController":
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> bool:
+        self.close_device()
+        if exc_type:
+            print (f"{exc_val}")
+        return True
+
     def _setup_signal_handling(self) -> None:
         """Sets up signal handling to close the HID device on termination."""
         signal.signal(signal.SIGINT, self._signal_handler)  # Handle Ctrl+C
