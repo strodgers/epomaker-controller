@@ -57,7 +57,7 @@ class EpomakerImageCommand(EpomakerCommand):
         g |= g >> 6
         b |= b >> 5
 
-        return (r, g, b)
+        return r, g, b
 
     def encode_image(self, image_path: str) -> None:
         """Encode an image to 16-bit RGB565.

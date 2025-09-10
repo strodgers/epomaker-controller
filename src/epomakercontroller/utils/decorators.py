@@ -1,4 +1,5 @@
 import functools
+from src.epomakercontroller.logger.logger import Logger
 
 
 def noexcept(custom_message : str):
@@ -12,7 +13,7 @@ def noexcept(custom_message : str):
             try:
                 return func(*args, **kwargs)
             except Exception as e:
-                print(custom_message + e.__str__())
+                Logger.log_error(custom_message + e.__str__())
 
         return wrapper
     return decorator

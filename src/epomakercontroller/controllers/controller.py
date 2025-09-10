@@ -42,6 +42,7 @@ class ControllerBase(metaclass=ABCMeta):
         """Sets up signal handling to close the HID device on termination."""
         signal.signal(signal.SIGINT, self._signal_handler)  # Handle Ctrl+C
         signal.signal(signal.SIGTERM, self._signal_handler)  # Handle termination
+        signal.signal(signal.SIGQUIT, self._signal_handler) 
 
     def _signal_handler(self, sig: int, _: Optional[FrameType]) -> None:
         """Handles signals to ensure the HID device is closed."""

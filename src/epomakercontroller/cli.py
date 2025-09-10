@@ -172,8 +172,7 @@ def dev(print_info: bool, generate_udev: bool) -> None:
         return
 
     if print_info:
-        # I didn't find anything that was called after the controller initialization, is SOLID rule being violated?
-        pass
+        controller.print_device_info()
     elif generate_udev:
         controller.generate_udev_rule()
     else:
@@ -188,7 +187,7 @@ def set_keys(controller: EpomakerController) -> None:
     """Open a simple GUI to set individual key colours."""
     root = tk.Tk()
     RGBKeyboardGUI(
-        root, controller.send_keys, controller.config_layout, controller.config_keymap
+        root, controller.send_keys, controller.config.config_layout, controller.config.config_keymap
     )
 
     def on_close() -> None:
@@ -212,7 +211,7 @@ def remap_keys(controller: EpomakerController, key_index: int, key_combo: int) -
 @click.option("--filter", default=None, help="Filter the keymap by key name")
 def show_keymap(keymap_filter: str | None) -> None:
     controller = EpomakerController(CONFIG_MAIN, dry_run=True)
-    data = controller.config_keymap.data
+    data = controller.config.config_keymap.data
 
     # It's better not to use assert in production
     # asserts could be disabled, which will break this code segment

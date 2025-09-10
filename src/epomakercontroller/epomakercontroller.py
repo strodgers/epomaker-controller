@@ -217,13 +217,14 @@ class EpomakerController(ControllerBase):
 
         Logger.log_info("Rule generated successfully")
 
-    def _print_device_info(self) -> None:
+    def print_device_info(self) -> None:
         """Prints device information."""
         devices = self.device_list.copy()
         for device in devices:
             device["path"] = device["path"].decode("utf-8")
             device["vendor_id"] = f"0x{device['vendor_id']:04x}"
             device["product_id"] = f"0x{device['product_id']:04x}"
+
         print(
             dumps(
                 devices,
