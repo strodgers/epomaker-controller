@@ -17,7 +17,7 @@ from .constants import CONFIG_DIRECTORY, CONFIG_NAME, DEFAULT_MAIN_CONFIG
 
 
 if typing.TYPE_CHECKING:
-    from typing import Optional, Any
+    from typing import Optional, Any, Dict
 
 
 class ConfigType(Enum):
@@ -36,7 +36,7 @@ MODULE_BY_CONFIG_TYPE = {
 class Config:
     type: ConfigType
     filename: str
-    data: dict[Any, Any] | None = None
+    data: Dict[Any, Any] | None = None
 
     def __post_init__(self) -> None:
         # If data not set manually, load it from the filename
@@ -121,7 +121,7 @@ def load_main_config() -> Config:
     return verify_main_config(config)
 
 
-def get_all_configs() -> Optional[dict[ConfigType, Config]]:
+def get_all_configs() -> Optional[Dict[ConfigType, Config]]:
     # First load the main config file
     main_config = load_main_config()
 
