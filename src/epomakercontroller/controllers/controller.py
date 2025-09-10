@@ -4,8 +4,6 @@ import signal
 
 from abc import ABCMeta, abstractmethod
 
-from epomakercontroller.utils.decorators import noexcept
-
 if typing.TYPE_CHECKING:
     from types import FrameType
     from typing import Optional
@@ -16,6 +14,12 @@ class ControllerBase(metaclass=ABCMeta):
     Just a base class for every type of controller.
     I assume you plan to support multiple keyboard types. Must be useful
     """
+    def __init__(self):
+        self.__ready = False
+
+    @property
+    def ready(self):
+        return self.__ready
 
     @abstractmethod
     def open_device(self):
@@ -28,6 +32,7 @@ class ControllerBase(metaclass=ABCMeta):
         raise NotImplementedError
 
     def __enter__(self):
+        self.__ready = self.open_device()
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):

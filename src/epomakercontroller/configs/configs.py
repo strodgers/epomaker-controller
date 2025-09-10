@@ -125,14 +125,10 @@ def get_all_configs() -> Optional[Dict[ConfigType, Config]]:
     # First load the main config file
     main_config = load_main_config()
 
-    # Use keyboard and layout configs as per main config
-    conf_layout_path = main_config["CONF_LAYOUT_PATH"]
-    conf_keymap_path = main_config["CONF_KEYMAP_PATH"]
-
     all_configs = {
         ConfigType.CONF_MAIN: main_config,
-        ConfigType.CONF_LAYOUT: Config(ConfigType.CONF_LAYOUT, conf_layout_path),
-        ConfigType.CONF_KEYMAP: Config(ConfigType.CONF_KEYMAP, conf_keymap_path),
+        ConfigType.CONF_LAYOUT: Config(ConfigType.CONF_LAYOUT, main_config["CONF_LAYOUT_PATH"]),
+        ConfigType.CONF_KEYMAP: Config(ConfigType.CONF_KEYMAP, main_config["CONF_KEYMAP_PATH"]),
     }
 
     return all_configs

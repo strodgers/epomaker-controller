@@ -23,7 +23,7 @@ def wrapped_command(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         with EpomakerController(CONFIG_MAIN) as controller:
-            if not controller.open_device():
+            if not controller.ready():
                 Logger.log_error("Failed to open device")
                 return None
 

@@ -7,15 +7,17 @@ from __future__ import annotations
 import typing
 
 import dataclasses
-from datetime import datetime
-from json import dumps
 import os
 import time
 import hid  # type: ignore[import-not-found]
 import subprocess
 import re
 from typing import override
+from datetime import datetime
+from json import dumps
 
+from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
+from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
 from .utils.time_helper import TimeHelper
 from .utils.keyboard_keys import KeyboardKeys
@@ -30,8 +32,9 @@ from .commands import (
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
 )
+
 from .commands.data.constants import BUFF_LENGTH, Profile
-from .configs.configs import Config, ConfigType
+from .configs.configs import Config, ConfigType, get_all_configs
 from .controllers.controller import ControllerBase
 
 
@@ -39,12 +42,35 @@ if typing.TYPE_CHECKING:
     from typing import Any, Optional
 
 
+class EpomakerConfig:
+    def __init__(self, config_main: Config) -> None:
+        all_configs = get_all_configs()
+        self.config_layout = all_configs.get(ConfigType.CONF_LAYOUT)
+        self.config_keymap = all_configs.get(ConfigType.CONF_KEYMAP)
+
+        self.vendor_id = config_main["VENDOR_ID"]
+        self.use_wireless = config_main["USE_WIRELESS"]
+
+        self.product_ids: list[int] = (
+            config_main["PRODUCT_IDS_WIRED"]
+            if not self.use_wireless
+            else config_main["PRODUCT_IDS_24G"]
+        )
+        self.device_description = config_main["DEVICE_DESCRIPTION_REGEX"]
+
+
+@dataclasses.dataclass
+class HIDInfo:
+    device_name: str
+    event_path: str
+    hid_path: Optional[str] = None
+
+
 class EpomakerController(ControllerBase):
     """EpomakerController class represents a controller for an Epomaker USB HID device.
 
     Attributes:
-        vendor_id (int): The vendor ID of the USB HID device.
-        product_id (int): The product ID of the USB HID device.
+        config (EpomakerConfig): The configuration of the controller.
         device (hid.device): The HID device object.
         dry_run (bool): Whether to run in dry run mode.
 
@@ -64,36 +90,21 @@ class EpomakerController(ControllerBase):
         """Initializes the EpomakerController object.
 
         Args:
-            vendor_id (int): The vendor ID of the USB HID device.
+            config_main (Config): The CONF_MAIN type configuration.
             dry_run (bool): Whether to run in dry run mode (default: False).
         """
         super().__init__()
 
-        self.config_layout = Config(
-            ConfigType.CONF_LAYOUT, config_main.data["CONF_LAYOUT_PATH"]  # type: ignore
-        )
-        self.config_keymap = Config(
-            ConfigType.CONF_KEYMAP, config_main.data["CONF_KEYMAP_PATH"]  # type: ignore
-        )
+        self.config = EpomakerConfig(config_main)
 
-        self.vendor_id = config_main["VENDOR_ID"]
-        self.use_wireless = config_main["USE_WIRELESS"]
-        self.product_ids: list[int] = (
-            config_main["PRODUCT_IDS_WIRED"]
-            if not self.use_wireless
-            else config_main["PRODUCT_IDS_24G"]
-        )
-        self.device_description = config_main["DEVICE_DESCRIPTION_REGEX"]
         self.device = hid.device()
         self.dry_run = dry_run
         self.device_list: list[dict[str, Any]] = []
-        print(
-            """WARNING: If this program errors out or you cancel early, the keyboard
-              may become unresponsive. It should work fine again if you unplug and plug
-               it back in!"""
+        Logger.log_warning(
+            "If this program errors out or you cancel early, the keyboard may become unresponsive. "
+            "It should work fine again if you unplug and plug it back in!"
         )
 
-        # Set up signal handling
         self._setup_signal_handling()
 
     @override
@@ -107,7 +118,7 @@ class EpomakerController(ControllerBase):
             bool: True if the device is opened successfully, False otherwise.
         """
         if self.dry_run:
-            print("Dry run: skipping device open")
+            Logger.log_info("Dry run: skipping device open")
             return True
 
         product_id = self._find_product_id()
@@ -115,7 +126,6 @@ class EpomakerController(ControllerBase):
             return False
 
         if only_info:
-            self._print_device_info()
             return True
 
         # Find the device with the specified interface number so we can open by path
@@ -123,11 +133,8 @@ class EpomakerController(ControllerBase):
         device_path = self._find_device_path()
         if device_path is None:
             return False
-        try:
-            self._open_device(device_path)
-        except IOError as e:
-            print (e)
-            return False
+
+        self._open_device(device_path)
         return self.device is not None
 
     @override
@@ -145,10 +152,13 @@ class EpomakerController(ControllerBase):
         Returns:
             int | None: The product ID if found, None otherwise.
         """
-        for pid in self.product_ids:
-            self.device_list = hid.enumerate(self.vendor_id, pid)
+
+        # Todo: optimization
+        for pid in self.config.product_ids:
+            self.device_list = hid.enumerate(self.config.vendor_id, pid)
             if self.device_list:
                 return pid
+
         return None
 
     def _open_device(self, device_path: bytes) -> None:
@@ -158,10 +168,9 @@ class EpomakerController(ControllerBase):
             device_path (bytes): The path to the device.
         """
         try:
-            self.device = hid.device()
             self.device.open_path(device_path)
         except IOError as e:
-            print(
+            Logger.log_error(
                 f"Failed to open device: {e}\n"
                 "Please make sure the device is connected\n"
                 "and you have the necessary permissions.\n\n"
@@ -170,32 +179,29 @@ class EpomakerController(ControllerBase):
             )
             self.device = None
 
-        assert self.device is not None
-
     def generate_udev_rule(self) -> None:
-        """Generates a udev rule for the connected keyboard."""
+        """Generates udev rule for the connected keyboard."""
         rule_content = (
             f"# Epomaker RT100 keyboard\n"
-            f'SUBSYSTEM=="usb", ATTRS{{idVendor}}=="{self.vendor_id:04x}", '
+            f'SUBSYSTEM=="usb", ATTRS{{idVendor}}=="{self.config.vendor_id:04x}", '
             f'ATTRS{{idProduct}}=="{self._find_product_id():04x}", MODE="0666", '
             'GROUP="plugdev"\n\n'
         )
 
-        rule_file_path = "/etc/udev/rules.d/99-epomaker-rt100.rules"
-
-        print("Generating udev rule for Epomaker RT100 keyboard")
-        print(f"Rule content:\n{rule_content}")
-        print(f"Rule file path: {rule_file_path}")
-        print("Please enter your password if prompted")
+        Logger.log_info("Generating udev rule for Epomaker RT100 keyboard")
+        Logger.log_info(f"Rule content:\n{rule_content}")
+        Logger.log_info(f"Rule file path: {RULE_FILE_PATH}")
+        Logger.log_info("Please enter your password if prompted")
 
         # Write the rule to a temporary file
-        temp_file_path = "/tmp/99-epomaker-rt100.rules"
+        temp_file_path = TMP_FILE_PATH
+
         with open(temp_file_path, "w", encoding="utf-8") as temp_file:
             temp_file.write(rule_content)
 
         # Move the file to the correct location, reload rules
 
-        move_command = ["mv", temp_file_path, rule_file_path]
+        move_command = ["mv", temp_file_path, RULE_FILE_PATH]
         reload_command = ["udevadm", "control", "--reload-rules"]
         trigger_command = ["udevadm", "trigger"]
 
@@ -209,7 +215,7 @@ class EpomakerController(ControllerBase):
         subprocess.run(reload_command, check=True)
         subprocess.run(trigger_command, check=True)
 
-        print("Rule generated successfully")
+        Logger.log_info("Rule generated successfully")
 
     def _print_device_info(self) -> None:
         """Prints device information."""
@@ -225,12 +231,6 @@ class EpomakerController(ControllerBase):
             )
         )
 
-    @dataclasses.dataclass
-    class HIDInfo:
-        device_name: str
-        event_path: str
-        hid_path: Optional[str] = None
-
     def _find_device_path(self) -> Optional[bytes]:
         """Finds the device path with the specified interface number.
 
@@ -239,11 +239,11 @@ class EpomakerController(ControllerBase):
         """
         input_dir = "/sys/class/input"
         hid_infos = EpomakerController._get_hid_infos(
-            input_dir, self.device_description
+            input_dir, self.config.device_description
         )
 
         if not hid_infos:
-            print(f"No events found with description: '{self.device_description}'")
+            print(f"No events found with description: '{self.config.device_description}'")
             return None
 
         EpomakerController._populate_hid_paths(hid_infos)
@@ -263,7 +263,7 @@ class EpomakerController(ControllerBase):
                         if re.search(description, device_name):
                             event_path = os.path.join(input_dir, event)
                             hid_infos.append(
-                                EpomakerController.HIDInfo(device_name, event_path)
+                                HIDInfo(device_name, event_path)
                             )
                 except FileNotFoundError:
                     continue
@@ -284,7 +284,7 @@ class EpomakerController(ControllerBase):
 
     def _select_device_path(self, hid_infos: list[HIDInfo]) -> Optional[bytes]:
         """Select the appropriate device path based on interface preference."""
-        device_name_filter = "Wireless" if self.use_wireless else "Wired"
+        device_name_filter = "Wireless" if self.config.use_wireless else "Wired"
         filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
 
         if not filtered_devices:
@@ -344,15 +344,15 @@ class EpomakerController(ControllerBase):
         image_command.encode_image(image_path)
         self._send_command(image_command)
 
-    def send_time(self, time: datetime | None = None) -> None:
+    def send_time(self, time_to_send: datetime | None = None) -> None:
         """Sends `time` to the HID device.
 
         Args:
-            time (datetime): The time to send (default: None).
+            time_to_send (datetime): The time to send (default: None).
         """
-        if not time:
-            time = datetime.now()
-        time_command = EpomakerTimeCommand.EpomakerTimeCommand(time)
+        if not time_to_send:
+            time_to_send = datetime.now()
+        time_command = EpomakerTimeCommand.EpomakerTimeCommand(time_to_send)
         self._send_command(time_command)
 
     def send_temperature(self, temperature: int | None) -> None:
@@ -360,7 +360,6 @@ class EpomakerController(ControllerBase):
 
         Args:
             temperature (int): The temperature value in C (0-99).
-            delay_seconds (int): Time waited after command is sent.
 
         Raises:
             ValueError: If the temperature is not in the range 0-99.
@@ -379,7 +378,6 @@ class EpomakerController(ControllerBase):
 
         Args:
             cpu (int): The CPU percentage to send.
-            delay_seconds (int): Time waited after command is sent.
 
         Raises:
             ValueError: If the CPU percentage is not in the range 0-100 and
@@ -397,7 +395,7 @@ class EpomakerController(ControllerBase):
             self._assert_range(value, range(0, 256))
 
         # Get all the keyboard keys
-        keyboard_keys = KeyboardKeys(self.config_keymap)
+        keyboard_keys = KeyboardKeys(self.config.config_keymap)
 
         # Construct a KeyMap object
         mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
@@ -435,7 +433,7 @@ class EpomakerController(ControllerBase):
                 rgb=(180, 180, 180),
             )
             self.set_profile(profile)
-            print(
+            Logger.log_info(
                 f"[{counter + 1}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}"
             )
             time.sleep(sleep_seconds)

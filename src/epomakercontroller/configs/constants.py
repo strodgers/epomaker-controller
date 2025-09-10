@@ -7,6 +7,11 @@ and provide a single point of project configuration
 CONFIG_DIRECTORY = ".epomaker-controller"
 CONFIG_NAME = "config.json"
 
+RULE_FILE_PATH = "/etc/udev/rules.d/99-epomaker-rt100.rules"
+
+TMP_FOLDER = "/tmp/"
+TMP_FILE_PATH = TMP_FOLDER + "99-epomaker-rt100.rules"
+
 # Todo: Create default.json here and paste the contents of this dict there
 DEFAULT_MAIN_CONFIG = {
     "VENDOR_ID": 0x3151,
