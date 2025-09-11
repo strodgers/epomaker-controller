@@ -214,7 +214,6 @@ def show_keymap(keymap_filter: str | None) -> None:
     data = controller.config.config_keymap.data
 
     # It's better not to use assert in production
-    # asserts could be disabled, which will break this code segment
     if not data:
         Logger.log_error("No keymap data")
         return

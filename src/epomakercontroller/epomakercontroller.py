@@ -306,13 +306,18 @@ class EpomakerController(ControllerBase):
             command (EpomakerCommand): The command to send.
         """
         # Make sure device is opened and connected
-        assert self.device, "Device is not set!"
+        if not self.device:
+            Logger.log_error("No device connected")
+            return
+
         try:
             self.device.get_product_string()
         except:  # noqa: E722
             raise IOError("Could not communicate with device")
 
-        assert command.report_data_prepared, "Report data not prepared"
+        if not command.report_data_prepared:
+            return
+
         for packet in command:
             assert len(packet) == BUFF_LENGTH
             if self.dry_run:
@@ -321,8 +326,8 @@ class EpomakerController(ControllerBase):
                 self.device.send_feature_report(packet.get_all_bytes())
 
     @staticmethod
-    def _assert_range(value: int, r: range | None = None) -> bool:
-        """Asserts that a value is within a specified range.
+    def _check_range(value: int, r: range | None = None) -> bool:
+        """Checks that a value is within a specified range.
 
         Args:
             value (int): The value to check.
@@ -368,7 +373,7 @@ class EpomakerController(ControllerBase):
         if not temperature:
             # Don't do anything if temperature is None
             return
-        if not self._assert_range(temperature):
+        if not self._check_range(temperature):
             raise ValueError("Temperature must be in range 0-99: ", temperature)
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         print(f"Sending temperature {temperature}C")
@@ -384,7 +389,7 @@ class EpomakerController(ControllerBase):
             ValueError: If the CPU percentage is not in the range 0-100 and
                 from_daemon is False.
         """
-        if not self._assert_range(cpu):
+        if not self._check_range(cpu):
             raise ValueError("CPU percentage must be in range 0-100")
         cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
         print(f"Sending CPU {cpu}%")
@@ -393,7 +398,7 @@ class EpomakerController(ControllerBase):
     def set_rgb_all_keys(self, r: int, g: int, b: int) -> None:
         # Make sure values are within range
         for value in [r, g, b]:
-            self._assert_range(value, range(0, 256))
+            self._check_range(value, range(0, 256))
 
         # Get all the keyboard keys
         keyboard_keys = KeyboardKeys(self.config.config_keymap)

@@ -8,6 +8,7 @@ from .EpomakerCommand import EpomakerCommand, CommandStructure
 from .data.constants import IMAGE_DIMENSIONS
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
+from ..logger.logger import Logger
 
 SUPPORTED_FORMATS = [".png", ".jpg", ".jpeg", ".bmp", ".tiff", ".tif", ".webp"]
 
@@ -70,9 +71,12 @@ class EpomakerImageCommand(EpomakerCommand):
             image_path (str): The path to the image file.
         """
         _, extension = os.path.splitext(image_path)
-        assert extension in SUPPORTED_FORMATS, f"Unsupported format\nSupported formats are: {SUPPORTED_FORMATS}"
+
+        if extension not in SUPPORTED_FORMATS:
+            Logger.log_error(f"Unsupported format\nSupported formats are: {SUPPORTED_FORMATS}")
+            return
+
         image = cv2.imread(image_path)
-        assert not isinstance(image, type(None)), f"Failed reading {image_path}"
         image = cv2.resize(image, IMAGE_DIMENSIONS)
         image = cv2.flip(image, 0)
         image = cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE)
@@ -87,7 +91,8 @@ class EpomakerImageCommand(EpomakerCommand):
                     r, g, b = image[y, x]
                     image_16bit[y, x] = self._encode_rgb565(r, g, b)
         except Exception as e:
-            print(f"Exception while converting image: {e}")
+            Logger.log_error(f"Exception while converting image: {e}")
+            return
 
         image_8bit_flattened = np.ndarray.flatten(self._np16_to_np8(image_16bit))
         data_buff_length = BUFF_LENGTH - self.report_data_header_length
@@ -111,10 +116,12 @@ class EpomakerImageCommand(EpomakerCommand):
             data_buff_pointer += data_buff_length
             self._insert_report(report)
 
-        assert len(self.get_data_reports()) == self.structure.number_of_data_reports, (
-            f"Expected {self.structure.number_of_data_reports} reports, got "
-            f"{len(self.get_data_reports())}."
-        )
+        if len(self.get_data_reports()) != self.structure.number_of_data_reports:
+            Logger.log_error(
+                f"Expected {self.structure.number_of_data_reports} reports, got "
+                f"{len(self.get_data_reports())}."
+            )
+            return
 
         self.report_data_prepared = True
 
@@ -145,6 +152,5 @@ class EpomakerImageCommand(EpomakerCommand):
 
         self.report_footer_prepared = True
 
-        assert len(self.reports) == len(
-            self.structure
-        ), f"Expected {len(self.structure)} reports, got {len(self.reports)}."
+        if len(self.reports) != len(self.structure):
+            Logger.log_error(f"Expected {len(self.structure)} reports, got {len(self.reports)}.")
