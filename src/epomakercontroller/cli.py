@@ -178,7 +178,8 @@ def dev(print_info: bool, generate_udev: bool) -> None:
     else:
         # It would be better to print help string or something like that
         Logger.log_error("No dev tool specified.")
-        click.echo(dev.__doc__)
+        click.echo("--print Print all available information about the connected keyboard.")
+        click.echo("--udev Generate a udev rule for the connected keyboard.")
 
 
 @cli.command()

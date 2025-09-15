@@ -8,7 +8,7 @@ import json
 from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
-from src.epomakercontroller.logger.logger import Logger
+from epomakercontroller.logger.logger import Logger
 
 import epomakercontroller.configs.layouts
 import epomakercontroller.configs.keymaps
