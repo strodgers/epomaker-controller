@@ -1,14 +1,23 @@
+from __future__ import annotations
+import importlib.resources as pkg_resources
+
+import typing
+import os
+import json
+
+from pathlib import Path
 from dataclasses import dataclass
 from enum import Enum
-import json
-import os
-from pathlib import Path
-from typing import Any
+from epomakercontroller.logger.logger import Logger
 
-import epomakercontroller.configs.configs
 import epomakercontroller.configs.layouts
 import epomakercontroller.configs.keymaps
-import importlib.resources as pkg_resources
+
+from .constants import CONFIG_DIRECTORY, CONFIG_NAME, DEFAULT_MAIN_CONFIG
+
+
+if typing.TYPE_CHECKING:
+    from typing import Optional, Any, Dict
 
 
 class ConfigType(Enum):
@@ -17,15 +26,9 @@ class ConfigType(Enum):
     CONF_KEYMAP = 2
 
 
-DEFAULT_MAIN_CONFIG = {
-    "VENDOR_ID": 0x3151,
-    "PRODUCT_IDS_WIRED": [0x4010, 0x4015],
-    "PRODUCT_IDS_24G": [0x4011, 0x4016],
-    "USE_WIRELESS": False,
-    "DEVICE_DESCRIPTION_REGEX": "ROYUAN .* System Control",
-    # The file will be looked for in the install location first, otherwise use a full filepath
-    "CONF_LAYOUT_PATH": "EpomakerRT100-UK-ISO.json",
-    "CONF_KEYMAP_PATH": "EpomakerRT100.json",
+MODULE_BY_CONFIG_TYPE = {
+    ConfigType.CONF_LAYOUT: epomakercontroller.configs.layouts,
+    ConfigType.CONF_KEYMAP: epomakercontroller.configs.keymaps
 }
 
 
@@ -33,48 +36,34 @@ DEFAULT_MAIN_CONFIG = {
 class Config:
     type: ConfigType
     filename: str
-    data: dict[Any, Any] | None = None
+    data: Dict[Any, Any] | None = None
 
     def __post_init__(self) -> None:
         # If data not set manually, load it from the filename
-        if not self.data:
-            with open(self._find_config_path(self.filename, self.type), "r", encoding="utf-8") as f:
-                self.data = json.load(f)
-                return
+        if self.data:
+            return
 
-        assert self.data is not None, "ERROR: Config has no data"
+        with open(self._find_config_path(self.filename, self.type), "r", encoding="utf-8") as f:
+            self.data = json.load(f)
 
     @staticmethod
-    def _find_config_path(filename: str, type: ConfigType) -> str:
+    def _find_config_path(filename: str, config_type: ConfigType) -> str:
         # If the filename exists, use that
         if os.path.exists(filename):
             return os.path.realpath(filename)
 
-        # Otherwise check for installed files
-        if type == ConfigType.CONF_LAYOUT:
-            with pkg_resources.path(
-                epomakercontroller.configs.layouts, filename
-            ) as path:
-                return str(path)
-        elif type == ConfigType.CONF_KEYMAP:
-            with pkg_resources.path(
-                epomakercontroller.configs.keymaps, filename
-            ) as path:
-                return str(path)
-
-        raise AttributeError(f"Unsupported ConfigType: {type.name}")
+        with pkg_resources.path(
+            MODULE_BY_CONFIG_TYPE[config_type], filename
+        ) as path:
+            return str(path)
 
     def __getitem__(self, key: str) -> Any:
-        assert self.data is not None, "ERROR: Config has no data"
-        if key not in self.data:
-            print(f"Key {key} not found in {self.type.name}")
-            return None
-        return self.data[key]
+        return self.data.get(key)
 
 
 def get_main_config_directory() -> Path:
-    home_dir = Path.home()
-    config_dir = home_dir / ".epomaker-controller"
+    home_dir = Path(os.path.abspath(os.curdir))
+    config_dir = home_dir / CONFIG_DIRECTORY
     return config_dir
 
 
@@ -85,38 +74,34 @@ def create_default_main_config(config_file: Path) -> None:
 
 def save_main_config(config: Config) -> None:
     config_dir = get_main_config_directory()
-    config_file = config_dir / "config.json"
+    config_file = config_dir / CONFIG_NAME
     with open(config_file, 'w', encoding="utf-8") as f:
         json.dump(config.data, f, indent=4)
 
 
 def setup_main_config() -> Path:
     config_dir = get_main_config_directory()
-    config_file = config_dir / "config.json"
+    config_file = config_dir / CONFIG_NAME
 
-    # Create the config directory if it doesn't exist
     if not config_dir.exists():
-        print(f"Creating config directory at {config_dir}")
+        Logger.log_info(f"Creating config directory at {config_dir}")
         config_dir.mkdir(parents=True)
 
-    # Create the default config file if it doesn't exist
     if not config_file.exists():
-        print(f"Creating default config file at {config_file}")
+        Logger.log_info(f"Creating default config file at {config_file}")
         create_default_main_config(config_file)
 
     return config_file
 
 
-def verify_main_config(in_config: Config) -> Config:
-    assert (
-        in_config.type == ConfigType.CONF_MAIN
-    ), "ERROR: verify_main_config only for Configs of type CONF_MAIN"
-    assert in_config.data is not None, "ERROR: Config has no data"
+def verify_main_config(in_config: Config) -> Optional[Config]:
+    if in_config.type != ConfigType.CONF_MAIN:
+        Logger.log_error("verify_main_config only for Configs of type CONF_MAIN")
+        return None
 
-    # Ensure no unsupported entries are present
-    extra_keys = set(in_config.data.keys()) - set(DEFAULT_MAIN_CONFIG.keys())
-    if extra_keys:
-        raise ValueError(f"ERROR: Unsupported config entries found: {extra_keys}")
+    if not in_config.data:
+        Logger.log_error("Config has no data")
+        return None
 
     # Merge the default values with the provided config, ensuring no missing keys
     out_config = Config(
@@ -127,31 +112,23 @@ def verify_main_config(in_config: Config) -> Config:
 
     # Write config back
     save_main_config(out_config)
-
     return out_config
 
 
 def load_main_config() -> Config:
     config_file = setup_main_config()
-
     config = Config(ConfigType.CONF_MAIN, config_file.as_posix())
-
     return verify_main_config(config)
 
 
-def get_all_configs() -> dict[ConfigType, Config]:
+def get_all_configs() -> Optional[Dict[ConfigType, Config]]:
     # First load the main config file
     main_config = load_main_config()
-    assert main_config.data is not None, "ERROR: Config has no data"
-
-    # Use keyboard and layout configs as per main config
-    conf_layout_path = main_config.data["CONF_LAYOUT_PATH"]
-    conf_keymap_path = main_config.data["CONF_KEYMAP_PATH"]
 
     all_configs = {
         ConfigType.CONF_MAIN: main_config,
-        ConfigType.CONF_LAYOUT: Config(ConfigType.CONF_LAYOUT, conf_layout_path),
-        ConfigType.CONF_KEYMAP: Config(ConfigType.CONF_KEYMAP, conf_keymap_path),
+        ConfigType.CONF_LAYOUT: Config(ConfigType.CONF_LAYOUT, main_config["CONF_LAYOUT_PATH"]),
+        ConfigType.CONF_KEYMAP: Config(ConfigType.CONF_KEYMAP, main_config["CONF_KEYMAP_PATH"]),
     }
 
     return all_configs
