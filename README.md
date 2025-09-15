@@ -29,12 +29,12 @@ sudo apt-get install python3-tkinter
 ```
 
 ## Installation
-I suggest using conda or a python virtual env, tested on python 3.10 and 3.12:
+I suggest using conda or a python virtual env with python 3.12:
 
 _Epomakercontroller_ package is available on [PyPi](https://pypi.org/project/EpomakerController/)
 
 ```console
-$ python3.10 -m venv epomaker
+$ python3.12 -m venv epomaker
 $ source epomaker/bin/activate
 $ pip install EpomakerController
 ```
