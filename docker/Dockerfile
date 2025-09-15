@@ -1,4 +1,4 @@
-FROM python:3.13-slim
+FROM python:3.12-slim
 
 RUN apt-get update && apt-get install -y \
     python3-tk \
@@ -12,7 +12,7 @@ RUN pip install .
 
 RUN useradd -ms /bin/bash nonrootuser && chown -R nonrootuser:nonrootuser /src
 
-COPY entrypoint.sh /entrypoint.sh
+COPY docker/entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
 ENTRYPOINT ["/entrypoint.sh"]
