@@ -1,0 +1,15 @@
+{
+    "VENDOR_ID": 12625,
+    "PRODUCT_IDS_WIRED": [
+        16400,
+        16405
+    ],
+    "PRODUCT_IDS_24G": [
+        16401,
+        16406
+    ],
+    "USE_WIRELESS": false,
+    "DEVICE_DESCRIPTION_REGEX": "ROYUAN .* System Control",
+    "CONF_LAYOUT_PATH": "EpomakerRT100-UK-ISO.json",
+    "CONF_KEYMAP_PATH": "EpomakerRT100.json"
+}
