@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+
 from epomakercontroller.configs import configs
 from epomakercontroller.configs.configs import ConfigType
 
@@ -56,3 +57,42 @@ def test_config_creation():
 
     # Default return check
     assert not config["test_val3"]
+
+    # Merge check
+    config.type = ConfigType.CONF_MAIN
+    config = configs.verify_main_config(config)
+    assert "VENDOR_ID" in config
+
+
+def test_default_main_config():
+    """
+    This test was created during DEFAULT_MAIN_CONFIG dict migration
+    That made migration a test-driven process. That guarantees that nothing was broken in process
+    """
+
+    DEFAULT_MAIN_CONFIG = {
+        "VENDOR_ID": 0x3151,
+        "PRODUCT_IDS_WIRED": [0x4010, 0x4015],
+        "PRODUCT_IDS_24G": [0x4011, 0x4016],
+        "USE_WIRELESS": False,
+        "DEVICE_DESCRIPTION_REGEX": "ROYUAN .* System Control",
+        "CONF_LAYOUT_PATH": "EpomakerRT100-UK-ISO.json",
+        "CONF_KEYMAP_PATH": "EpomakerRT100.json",
+    }
+
+    def fake_get_directory() -> Path:
+        current_dir = Path(os.path.abspath(__file__)).parent
+        return current_dir / "data" / "config"
+
+    path = fake_get_directory() / "new_main_config.json"
+    try:
+        configs.create_default_main_config(path)
+        main = configs.Config(ConfigType.CONF_MAIN, (fake_get_directory() / "new_main_config.json").__str__())
+
+        assert main
+
+        for key, value in DEFAULT_MAIN_CONFIG.items():
+            assert main[key] == value
+    finally:
+        if os.path.exists(path):
+            os.remove(path)
