@@ -4,6 +4,7 @@ import importlib.resources as pkg_resources
 import typing
 import os
 import json
+import shutil
 
 from pathlib import Path
 from dataclasses import dataclass
@@ -13,8 +14,7 @@ from epomakercontroller.logger.logger import Logger
 import epomakercontroller.configs.layouts
 import epomakercontroller.configs.keymaps
 
-from .constants import CONFIG_DIRECTORY, CONFIG_NAME, DEFAULT_MAIN_CONFIG
-
+from .constants import CONFIG_DIRECTORY, CONFIG_NAME, PATH_TO_DEFAULT_CONFIG
 
 if typing.TYPE_CHECKING:
     from typing import Optional, Any, Dict
@@ -60,6 +60,9 @@ class Config:
     def __getitem__(self, key: str) -> Any:
         return self.data.get(key)
 
+    def __contains__(self, key: str) -> bool:
+        return key in self.data
+
 
 def get_main_config_directory() -> Path:
     home_dir = Path(os.path.abspath(os.curdir))
@@ -68,8 +71,7 @@ def get_main_config_directory() -> Path:
 
 
 def create_default_main_config(config_file: Path) -> None:
-    with open(config_file, 'w', encoding="utf-8") as f:
-        json.dump(DEFAULT_MAIN_CONFIG, f, indent=4)
+    shutil.copy(PATH_TO_DEFAULT_CONFIG, config_file)
 
 
 def save_main_config(config: Config) -> None:
@@ -104,10 +106,14 @@ def verify_main_config(in_config: Config) -> Optional[Config]:
         return None
 
     # Merge the default values with the provided config, ensuring no missing keys
+
+    with open(PATH_TO_DEFAULT_CONFIG, "r", encoding="utf-8") as f:
+        default = json.load(f)
+
     out_config = Config(
         type=in_config.type,
         filename=in_config.filename,
-        data={**DEFAULT_MAIN_CONFIG, **in_config.data},
+        data={**default, **in_config.data},
     )
 
     # Write config back

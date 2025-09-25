@@ -346,6 +346,10 @@ class EpomakerController(ControllerBase):
         Args:
             image_path (str): The path to the image file.
         """
+        if not os.path.isfile(image_path):
+            Logger.log_error(f"Could not find image: {image_path}")
+            return
+
         image_command = EpomakerImageCommand.EpomakerImageCommand()
         image_command.encode_image(image_path)
         self._send_command(image_command)
@@ -374,9 +378,11 @@ class EpomakerController(ControllerBase):
             # Don't do anything if temperature is None
             return
         if not self._check_range(temperature):
-            raise ValueError("Temperature must be in range 0-99: ", temperature)
+            Logger.log_error(f"Temperature must be in range 0-99: {temperature}")
+            return
+
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
-        print(f"Sending temperature {temperature}C")
+        Logger.log_info(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
 
     def send_cpu(self, cpu: int) -> None:
@@ -390,7 +396,9 @@ class EpomakerController(ControllerBase):
                 from_daemon is False.
         """
         if not self._check_range(cpu):
-            raise ValueError("CPU percentage must be in range 0-100")
+            Logger.log_error(f"CPU percentage must be in range 0-100, got {cpu} instead")
+            return
+
         cpu_command = EpomakerCpuCommand.EpomakerCpuCommand(cpu)
         print(f"Sending CPU {cpu}%")
         self._send_command(cpu_command)
