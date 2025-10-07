@@ -4,9 +4,11 @@ import signal
 
 from abc import ABCMeta, abstractmethod
 
+
 if typing.TYPE_CHECKING:
     from types import FrameType
     from typing import Optional
+    from epomakercontroller.commands.EpomakerCommand import EpomakerCommand
 
 
 class ControllerBase(metaclass=ABCMeta):
@@ -29,6 +31,10 @@ class ControllerBase(metaclass=ABCMeta):
     @abstractmethod
     def close_device(self):
         # Resource unlock
+        raise NotImplementedError
+
+    @abstractmethod
+    def _send_command(self, command: EpomakerCommand):
         raise NotImplementedError
 
     def __enter__(self):
