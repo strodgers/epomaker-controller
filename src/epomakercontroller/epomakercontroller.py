@@ -36,7 +36,7 @@ from .commands import (
 from .commands.data.constants import BUFF_LENGTH, Profile
 from .configs.configs import Config, ConfigType, get_all_configs
 from .controllers.controller import ControllerBase
-
+from .configs.constants import DAEMON_TIME_DELAY
 
 if typing.TYPE_CHECKING:
     from typing import Any, Optional
@@ -470,15 +470,14 @@ class EpomakerController(ControllerBase):
 
         while True:
             # Send CPU usage
-            th_cpu = TimeHelper(min_duration=1.6)
-            self.send_cpu(get_cpu_usage(test_mode))
-            del th_cpu
+            with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                self.send_cpu(get_cpu_usage(test_mode))
 
             # Get device temperature using the provided key
             if temp_key:
-                th_temp = TimeHelper(min_duration=1.6)
-                self.send_temperature(get_device_temp(temp_key, test_mode))
-                del th_temp
+                with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                    self.send_temperature(get_device_temp(temp_key, test_mode))
+
             elif test_mode:
-                self.send_temperature(get_device_temp("dummy_device", test_mode))
-                time.sleep(1.6)
+                with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                    self.send_temperature(get_device_temp("dummy_device", test_mode))

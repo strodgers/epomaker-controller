@@ -13,3 +13,5 @@ TMP_FOLDER = "/tmp/"
 TMP_FILE_PATH = TMP_FOLDER + "99-epomaker-rt100.rules"
 
 PATH_TO_DEFAULT_CONFIG = "src/epomakercontroller/configs/default.json"
+
+DAEMON_TIME_DELAY = 1.6
