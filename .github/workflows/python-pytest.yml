@@ -1,0 +1,33 @@
+name: Pytest 
+
+on:
+  push:
+    branches: 
+      - main
+      - release/*
+      - master
+  pull_request:
+    branches:
+      - main
+      - release/*
+      - master
+
+jobs:
+  run_pytest:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: 3.12
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        pip install pytest
+    - name: Pytest run
+      run: |
+        pytest
+
+    
