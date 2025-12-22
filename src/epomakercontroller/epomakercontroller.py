@@ -471,13 +471,9 @@ class EpomakerController(ControllerBase):
         while True:
             # Send CPU usage
             with TimeHelper(min_duration=DAEMON_TIME_DELAY):
-                self.send_cpu(get_cpu_usage(test_mode))
-
-            # Get device temperature using the provided key
-            if temp_key:
-                with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                # self.send_cpu(get_cpu_usage(test_mode))
+                # Get device temperature using the provided key
+                if temp_key:
                     self.send_temperature(get_device_temp(temp_key, test_mode))
-
-            elif test_mode:
-                with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                elif test_mode:
                     self.send_temperature(get_device_temp("dummy_device", test_mode))
