@@ -16,7 +16,6 @@ from typing import override
 from datetime import datetime
 from json import dumps
 
-from .commands.EpomakerClearScreenCommand import EpomakerClearScreenCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
@@ -32,6 +31,7 @@ from .commands import (
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
+    EpomakerClearScreenCommand
 )
 
 from .commands.data.constants import BUFF_LENGTH, Profile
@@ -359,7 +359,7 @@ class EpomakerController(ControllerBase):
         """
         Sends command to completely clear the screen. Please note that you cannot revert this action.
         """
-        self._send_command(EpomakerClearScreenCommand())
+        self._send_command(EpomakerClearScreenCommand.EpomakerClearScreenCommand())
 
     def send_time(self, time_to_send: datetime | None = None) -> None:
         """Sends `time` to the HID device.
@@ -476,9 +476,11 @@ class EpomakerController(ControllerBase):
         self.send_time()
 
         while True:
+            with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                self.send_cpu(get_cpu_usage(test_mode))
+
             # Send CPU usage
             with TimeHelper(min_duration=DAEMON_TIME_DELAY):
-                # self.send_cpu(get_cpu_usage(test_mode))
                 # Get device temperature using the provided key
                 if temp_key:
                     self.send_temperature(get_device_temp(temp_key, test_mode))
