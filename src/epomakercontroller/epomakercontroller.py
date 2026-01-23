@@ -31,12 +31,13 @@ from .commands import (
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
+    EpomakerClearScreenCommand
 )
 
 from .commands.data.constants import BUFF_LENGTH, Profile
 from .configs.configs import Config, ConfigType, get_all_configs
 from .controllers.controller import ControllerBase
-
+from .configs.constants import DAEMON_TIME_DELAY
 
 if typing.TYPE_CHECKING:
     from typing import Any, Optional
@@ -354,6 +355,12 @@ class EpomakerController(ControllerBase):
         image_command.encode_image(image_path)
         self._send_command(image_command)
 
+    def clear_image(self) -> None:
+        """
+        Sends command to completely clear the screen. Please note that you cannot revert this action.
+        """
+        self._send_command(EpomakerClearScreenCommand.EpomakerClearScreenCommand())
+
     def send_time(self, time_to_send: datetime | None = None) -> None:
         """Sends `time` to the HID device.
 
@@ -469,16 +476,13 @@ class EpomakerController(ControllerBase):
         self.send_time()
 
         while True:
-            # Send CPU usage
-            th_cpu = TimeHelper(min_duration=1.6)
-            self.send_cpu(get_cpu_usage(test_mode))
-            del th_cpu
+            with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                self.send_cpu(get_cpu_usage(test_mode))
 
-            # Get device temperature using the provided key
-            if temp_key:
-                th_temp = TimeHelper(min_duration=1.6)
-                self.send_temperature(get_device_temp(temp_key, test_mode))
-                del th_temp
-            elif test_mode:
-                self.send_temperature(get_device_temp("dummy_device", test_mode))
-                time.sleep(1.6)
+            # Send CPU usage
+            with TimeHelper(min_duration=DAEMON_TIME_DELAY):
+                # Get device temperature using the provided key
+                if temp_key:
+                    self.send_temperature(get_device_temp(temp_key, test_mode))
+                elif test_mode:
+                    self.send_temperature(get_device_temp("dummy_device", test_mode))

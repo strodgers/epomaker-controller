@@ -1,0 +1,1 @@
+python3 debug_cli.py start_daemon

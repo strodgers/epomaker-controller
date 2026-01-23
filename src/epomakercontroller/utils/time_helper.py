@@ -16,9 +16,17 @@ class TimeHelper:
         self.min_duration = min_duration
         self.start_time = time.time()
 
-    def __del__(self) -> None:
+    def __lock(self):
+        self.start_time = time.time()
+
+    def __free(self):
         elapsed_time = time.time() - self.start_time
         remaining_time = self.min_duration - elapsed_time
-        # Ensure we do not sleep for a negative amount of time
         if remaining_time > 0:
             time.sleep(remaining_time)
+
+    def __enter__(self):
+        self.__lock()
+
+    def __exit__(self, *_, **__):
+        self.__free()
