@@ -1,7 +1,7 @@
 import pytest
 
 import time
-from src.epomakercontroller.utils.time_helper import TimeHelper
+from epomakercontroller.utils.time_helper import TimeHelper
 
 
 @pytest.mark.parametrize(
