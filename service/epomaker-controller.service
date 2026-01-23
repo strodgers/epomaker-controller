@@ -4,4 +4,4 @@ Description="Epomaker keyboard controller service"
 [Service]
 Type=simple
 Restart=no
-ExecStart=/bin/bash epomaker-controller.sh --service
+ExecStart=/bin/bash epomaker-controller.sh

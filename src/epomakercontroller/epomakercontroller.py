@@ -16,6 +16,7 @@ from typing import override
 from datetime import datetime
 from json import dumps
 
+from .commands.EpomakerClearScreenCommand import EpomakerClearScreenCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
@@ -353,6 +354,12 @@ class EpomakerController(ControllerBase):
         image_command = EpomakerImageCommand.EpomakerImageCommand()
         image_command.encode_image(image_path)
         self._send_command(image_command)
+
+    def clear_image(self) -> None:
+        """
+        Sends command to completely clear the screen. Please note that you cannot revert this action.
+        """
+        self._send_command(EpomakerClearScreenCommand())
 
     def send_time(self, time_to_send: datetime | None = None) -> None:
         """Sends `time` to the HID device.

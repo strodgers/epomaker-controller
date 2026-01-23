@@ -54,6 +54,17 @@ def upload_image(controller: EpomakerController, image_path: str) -> None:
 
 
 @cli.command()
+@wrapped_command
+def clear_screen(controller: EpomakerController) -> None:
+    """
+    Clear the screen.
+    Please note, that you cannot revert this action!
+    """
+    controller.clear_image()
+    Logger.log_info("Screen is cleared.")
+
+
+@cli.command()
 @click.argument("r", type=int)
 @click.argument("g", type=int)
 @click.argument("b", type=int)
