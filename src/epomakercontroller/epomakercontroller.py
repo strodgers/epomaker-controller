@@ -247,7 +247,7 @@ class EpomakerController(ControllerBase):
         )
 
         if not hid_infos:
-            logger.log_warning(f"No events found with description: '{self.config.device_description}'")
+            Logger.log_warning(f"No events found with description: '{self.config.device_description}'")
             return None
 
         EpomakerController._populate_hid_paths(hid_infos)
