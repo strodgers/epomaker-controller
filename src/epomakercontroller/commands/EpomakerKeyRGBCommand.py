@@ -9,17 +9,19 @@ from dataclasses import dataclass
 from typing import Iterator
 
 from .EpomakerCommand import EpomakerCommand, CommandStructure
+from ..utils.keyboard_keys import KeyboardKeys, KeyboardKey
 from .reports.Report import Report, BUFF_LENGTH
 from .reports.ReportWithData import ReportWithData
-from .data.constants import KeyboardKey
 
 
 class KeyMap:
     """Map a KeyboardKey index to an RGB value."""
 
-    def __init__(self) -> None:
+    def __init__(self, all_keys: KeyboardKeys) -> None:
         """Initializes the KeyMap."""
-        self.key_map: dict[int, tuple[int, int, int]] = {}
+        self.key_map: dict[KeyboardKey, tuple[int, int, int]] = {}
+        for key in all_keys:
+            self.key_map[key] = (0, 0, 0)
 
     def __getitem__(self, key: KeyboardKey) -> tuple[int, int, int]:
         """Gets the RGB value for a given key.
@@ -30,7 +32,7 @@ class KeyMap:
         Returns:
             tuple[int, int, int]: The RGB value for the key.
         """
-        return self.key_map[key.value]
+        return self.key_map[key]
 
     def __setitem__(self, key: KeyboardKey, value: tuple[int, int, int]) -> None:
         """Sets the RGB value for a given key.
@@ -39,9 +41,9 @@ class KeyMap:
             key (KeyboardKey): The key to set the RGB value for.
             value (tuple[int, int, int]): The RGB value to set.
         """
-        self.key_map[key.value] = value
+        self.key_map[key] = value
 
-    def __iter__(self) -> Iterator[tuple[int, tuple[int, int, int]]]:
+    def __iter__(self) -> Iterator[tuple[KeyboardKey, tuple[int, int, int]]]:
         """Iterates over the key map.
 
         Returns:
@@ -59,9 +61,14 @@ class KeyboardRGBFrame:
     """
 
     key_map: KeyMap
-    time_ms: int
-    length: int = 7
+    time_ms: int = 0
     index: int = 0
+
+    def overlay(
+        self, overlay_keys: set[KeyboardKey], colour: tuple[int, int, int]
+    ) -> None:
+        for key in overlay_keys:
+            self.key_map[key] = colour
 
 
 class EpomakerKeyRGBCommand(EpomakerCommand):
@@ -81,9 +88,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
             number_of_data_reports=len(frames) * data_reports_per_frame,
             number_of_footer_reports=0,
         )
-        initial_report = Report(
-            initialization_data, index=0, checksum_index=None
-        )
+        initial_report = Report(initialization_data, index=0, checksum_index=None)
         super().__init__(initial_report, structure)
 
         report_index = 1
@@ -91,8 +96,10 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         for frame in frames:
             for this_frame_report_index in range(0, data_reports_per_frame):
                 report = ReportWithData(
-                    ("19{this_frame_report_index:02x}{frame_index:02x}"
-                     "{total_frames:02x}{frame_time:02x}0000"),
+                    (
+                        "19{this_frame_report_index:02x}{frame_index:02x}"
+                        "{total_frames:02x}{frame_time:02x}0000"
+                    ),
                     index=report_index,
                     header_format_values={
                         "this_frame_report_index": this_frame_report_index,
@@ -104,12 +111,12 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                 )
                 # Zero out the data buffer
                 data_byterarray = bytearray(data_buffer_length)
-                for key_index, rgb in frame.key_map:
+                for key, rgb in frame.key_map:
                     # For each key, set the RGB values in the data buffer
                     for i, colour in enumerate(rgb):
                         # R, G, B individually
                         this_frame_colour_index = (
-                            (key_index * 3)
+                            (key.value * 3)
                             - (this_frame_report_index * data_buffer_length)
                             + i
                         )
@@ -119,6 +126,8 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
                 self._insert_report(report)
                 report_index += 1
 
+        self.report_data_prepared = True
+
     def get_data_reports(self) -> list[ReportWithData]:
         """Returns the data reports.
 
@@ -127,9 +136,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         """
         return [r for r in self.reports if isinstance(r, ReportWithData)]
 
-    def report_data_contain_index(
-        self, report: ReportWithData, index: int
-    ) -> bool:
+    def report_data_contain_index(self, report: ReportWithData, index: int) -> bool:
         """Checks if the provided report contains the specified index.
 
         Uses BUFF_LENGTH - self.report_data_header_length so this function
@@ -146,9 +153,7 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         data_buffer_length = BUFF_LENGTH - self.report_data_header_length
         for report in self.get_data_reports():
             report_data = report[self.report_data_header_length :]
-            if report_index_count <= index < (
-                report_index_count + data_buffer_length
-            ):
+            if report_index_count <= index < (report_index_count + data_buffer_length):
                 return True
             report_index_count += len(report_data)
         return False

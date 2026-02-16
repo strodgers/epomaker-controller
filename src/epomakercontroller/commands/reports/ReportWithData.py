@@ -8,6 +8,7 @@ import dataclasses
 from typing import Optional
 
 from .Report import Report
+from ...logger.logger import Logger
 
 
 @dataclasses.dataclass()
@@ -59,10 +60,13 @@ class ReportWithData(Report):
         Args:
             data (bytes): The data to add.
         """
-        assert not self.prepared, "Report data has already been set."
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before adding data."
+        if self.prepared:
+            return
+
+        if not self.report_bytearray:
+            Logger.log_error("Report was not set before add_data call")
+            return
+
         self.report_data = bytearray(data)
         self.report_bytearray += self.report_data
         self._pad()

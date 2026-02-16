@@ -3,9 +3,14 @@
 This module contains the Report and ReportCollection classes, which represent
 wrappers around bytearrays that are sent to the keyboard.
 """
-
+from __future__ import annotations
+import typing
 import dataclasses
-from typing import Iterator
+from epomakercontroller.logger.logger import Logger
+
+if typing.TYPE_CHECKING:
+    from typing import Iterator, Optional
+
 
 BUFF_LENGTH: int = 128 // 2  # 128 bytes / 2 bytes per hex value
 
@@ -30,22 +35,29 @@ class Report:
             self.report_bytearray = bytearray.fromhex(
                 self.header_format_string.format(**self.header_format_values)
             )
+
+        # We can check report_bytearray here, removing all future checks.
+        # That will slightly optimize performance
+        if not self.report_bytearray:
+            Logger.log_error("Report bytearray is empty. Cannot create report.")
+            return
+
         self.header_length = len(self.report_bytearray)
         if self.checksum_index is not None:
             self.report_bytearray += self._calculate_checksum(self._get_header())
-        assert len(self.report_bytearray) <= BUFF_LENGTH, (
-            f"Report length {len(self.report_bytearray)} exceeds the maximum length "
-            f"of {BUFF_LENGTH}."
-        )
+
+        if len(self.report_bytearray) > BUFF_LENGTH:
+            Logger.log_warning(
+                f"Report length {len(self.report_bytearray)} exceeds the maximum length of {BUFF_LENGTH}."
+            )
+            return
+
         self.header_length = len(self.report_bytearray)
         if self.pad_on_init:
             self._pad()
 
     def _pad(self) -> None:
         """Pads the report header with zeros to the maximum length."""
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before padding."
         self.report_bytearray += bytes(BUFF_LENGTH - len(self.report_bytearray))
 
     @staticmethod
@@ -68,26 +80,17 @@ class Report:
         Returns:
             bytes: The checksum bytes.
         """
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before getting."
-        assert (
-            self.checksum_index is not None
-        ), "Checksum index must be set before getting."
         return self[self.checksum_index]
 
-    def _get_header(self) -> bytes:
+    def _get_header(self) -> Optional[bytes]:
         """Gets the header from the report bytearray.
 
         Returns:
             bytes: The header bytes.
         """
-        assert (
-            self.header_length is not None
-        ), "Header length must be set before getting."
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before getting."
+        if not self.header_length:
+            return None
+
         return self.report_bytearray[: self.header_length]
 
     def __getitem__(self, key: int | slice) -> bytes:
@@ -99,9 +102,6 @@ class Report:
         Returns:
             bytes: The bytes from the report bytearray.
         """
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before getting."
         return bytes(self.report_bytearray[key])
 
     def __len__(self) -> int:
@@ -110,9 +110,7 @@ class Report:
         Returns:
             int: The length of the report bytearray.
         """
-        if self.report_bytearray is None:
-            return 0
-        return len(self.report_bytearray)
+        return len(self.report_bytearray) if self.report_bytearray else 0
 
     def get_all_bytes(self) -> bytearray | None:
         """Gets all the bytes from the report bytearray.
@@ -120,9 +118,6 @@ class Report:
         Returns:
             bytearray | None: The report bytearray.
         """
-        assert (
-            self.report_bytearray is not None
-        ), "Report bytearray must be set before getting all bytes."
         return self.report_bytearray
 
 
@@ -166,12 +161,14 @@ class ReportCollection:
         Args:
             report (Report): The report to add.
         """
-        assert report.index not in [
+        if report.index in [
             r.index for r in self.reports
-        ], f"Report index {report.index} already exists."
-        assert (
-            report.report_bytearray is not None
-        ), "Report bytearray must be set before adding."
+        ]:
+            # Ignoring duplicating report, which is not good btw,
+            # but currently I'm maintaining previous behaviour
+            # TODO: Review code logic and refactor if needed
+            return
+
         self.reports.append(report)
 
     def append(self, report: Report) -> None:
@@ -180,12 +177,12 @@ class ReportCollection:
         Args:
             report (Report): The report to append.
         """
-        assert report.index not in [
+        if report.index in [
             r.index for r in self.reports
-        ], f"Report index {report.index} already exists."
-        assert (
-            report.report_bytearray is not None
-        ), "Report bytearray must be set before adding."
+        ]:
+            # Ignoring duplicating report
+            return
+
         self.reports.append(report)
         self.reports.sort(key=lambda x: x.index)
 
@@ -196,7 +193,4 @@ class ReportCollection:
             Iterator[bytes]: The bytearrays of the reports.
         """
         for report in self.reports:
-            assert (
-                report.report_bytearray is not None
-            ), "Report bytearray must be set before iterating."
             yield report.report_bytearray

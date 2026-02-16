@@ -16,7 +16,7 @@ jobs:
       with:
         miniconda-version: "latest"
         auto-update-conda: true
-        python-version: 3.11
+        python-version: 3.12
         channels: conda-forge, defaults
 
     - name: Add conda to system path

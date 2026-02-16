@@ -1,10 +1,11 @@
 """Test cases for the __main__ module."""
 
+import os
+import tempfile
 import pytest
 from click.testing import CliRunner
 from typing import Iterator, Iterable
 from epomakercontroller.commands.data.constants import (
-    ALL_KEYBOARD_KEYS,
     IMAGE_DIMENSIONS,
     Profile,
 )
@@ -16,11 +17,17 @@ from epomakercontroller.commands import (
 from epomakercontroller.commands.reports import Report
 import random
 import numpy as np
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import cv2
+
+from epomakercontroller.configs.configs import ConfigType, get_all_configs
+from epomakercontroller.utils.keyboard_keys import KeyboardKeys
+from epomakercontroller.commands.EpomakerImageCommand import SUPPORTED_FORMATS
 
 # Set to True to display images
 DISPLAY = False
+
+CONFIGS = get_all_configs()
 
 
 @pytest.fixture
@@ -33,11 +40,11 @@ def runner() -> CliRunner:
     return CliRunner()
 
 
-class TestData:
+class DataHelper:
     """Test data for the EpomakerController."""
 
     def __init__(self, test_name: str) -> None:
-        """Initializes the TestData object.
+        """Initializes the DataHelper object.
 
         Args:
             test_name (str): The name of the test.
@@ -93,7 +100,7 @@ all_tests = [
     "_decode_rgb565-calibration-image-bytes",
 ]
 
-all_test_data = {test: TestData(test) for test in all_tests}
+all_test_data = {test: DataHelper(test) for test in all_tests}
 
 
 def assert_colour_close(
@@ -264,6 +271,20 @@ def test_encode_image_command() -> None:
         i += 1
 
 
+def test_encode_image_formats() -> None:
+    # Create a dummy 10x10 image for testing
+    dummy_img = np.random.randint(0, 256, (10, 10, 3), dtype=np.uint8)
+
+    temp_directory = tempfile.TemporaryDirectory()
+    for fmt in SUPPORTED_FORMATS:
+        output_path = os.path.join(temp_directory.name, f"test_image.{fmt}")
+        success = cv2.imwrite(output_path, dummy_img)
+        assert success, f"Failed to save: {output_path}"
+
+        command = EpomakerImageCommand.EpomakerImageCommand()
+        command.encode_image(output_path)
+
+
 def test_checksum() -> None:
     """Test checksum calculation for reports."""
     # Some commands use the 8th bit as the checksum
@@ -287,11 +308,11 @@ def test_checksum() -> None:
     ]:
         for i, t in enumerate(this_test_data):
             checksum = Report.Report._calculate_checksum(t[:checkbit])
-            assert checksum == t[checkbit].to_bytes(
-                1, byteorder="big"
-            ), (f"{i} > Checksum: {checksum!r},"
+            assert checksum == t[checkbit].to_bytes(1, byteorder="big"), (
+                f"{i} > Checksum: {checksum!r},"
                 "Buffer: {hex(t[checkbit])},"
-                "test {this_test_data.name}")
+                "test {this_test_data.name}"
+            )
 
 
 def compare_bytes_iterable(a: Iterable[bytes], b: Iterable[bytes]) -> None:
@@ -310,10 +331,11 @@ def compare_bytes_iterable(a: Iterable[bytes], b: Iterable[bytes]) -> None:
 def test_set_rgb_all_keys() -> None:
     """Test setting RGB values for all keys."""
     this_test_data = all_test_data["EpomakerKeyRGBCommand-all-keys-set"]
-    mapping = EpomakerKeyRGBCommand.KeyMap()
-    for key in ALL_KEYBOARD_KEYS:
+    keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
+    mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+    for key in keyboard_keys:
         mapping[key] = (100, 5, 69)
-    frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 50)]
+    frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=50)]
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
 
     compare_bytes_iterable(this_test_data, command.iter_report_bytes())
@@ -321,23 +343,29 @@ def test_set_rgb_all_keys() -> None:
 
 def test_set_rgb_multiple_frames() -> None:
     """Test setting RGB values for multiple frames."""
+
+    # This test is expecting the number row numbers to each be set in a different frame
+
     this_test_data = all_test_data["EpomakerKeyRGBCommand-numrow-keys-different-frames"]
     frames = []
+    keyboard_keys = KeyboardKeys(CONFIGS[ConfigType.CONF_KEYMAP])
 
-    # NUMROW_1 to NUMROW_9
+    # frames 1 to 9 each set NUMROW_1 to NUMROW_9
     for i in range(1, 10):
-        mapping = EpomakerKeyRGBCommand.KeyMap()
-        key = [k for k in ALL_KEYBOARD_KEYS if k.name == f"NUMROW_{i}"][0]
+        mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+        key = keyboard_keys.get_key_by_name(f"NUMROW_{i}")
+        assert key is not None, "Failed to get key by name"
         mapping[key] = (255, 255, 255)
         frames.append(
-            EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, i * 10, index=i - 1)
+            EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=i * 10, index=i - 1)
         )
 
-    # NUMROW_0 last
-    mapping = EpomakerKeyRGBCommand.KeyMap()
-    key = [k for k in ALL_KEYBOARD_KEYS if k.name == "NUMROW_0"][0]
+    # frame 10 has NUMROW_0 set
+    mapping = EpomakerKeyRGBCommand.KeyMap(keyboard_keys)
+    key = keyboard_keys.get_key_by_name("NUMROW_0")
+    assert key is not None, "Failed to get key by name"
     mapping[key] = (255, 255, 255)
-    frames.append(EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 100, index=9))
+    frames.append(EpomakerKeyRGBCommand.KeyboardRGBFrame(key_map=mapping, time_ms=100, index=9))
 
     command = EpomakerKeyRGBCommand.EpomakerKeyRGBCommand(frames)
     compare_bytes_iterable(this_test_data, command.iter_report_bytes())

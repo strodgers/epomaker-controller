@@ -1,18 +1,39 @@
 # src/epomakercontroller/cli.py
 """Simple CLI for the EpomakerController package."""
 
-import time
 import click
-from epomakercontroller.commands import (
-    EpomakerKeyRGBCommand,
-    EpomakerProfileCommand,
-)
-from epomakercontroller.commands.data.constants import ALL_KEYBOARD_KEYS, Profile
-from epomakercontroller import EpomakerController
-import psutil
+import tkinter as tk
+from functools import wraps
+
+from .commands.data.constants import Profile
+from .configs.configs import load_main_config
+from .epomakercontroller import EpomakerController
+from .utils.sensors import print_temp_devices
+from .utils.keyboard_gui import RGBKeyboardGUI
+from .utils.app_version import retrieve_app_version
+from .logger.logger import Logger
+
+CONFIG_MAIN = load_main_config()
+
+
+def wrapped_command(func):
+    """
+    Simple wrapper around command call. Propagates function name and docstring to click
+    """
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        with EpomakerController(CONFIG_MAIN) as controller:
+            if not controller.ready:
+                Logger.log_error("Failed to open device")
+                return None
+
+            result = func(controller, *args, **kwargs)
+            return result
+    return wrapper
 
 
 @click.group()
+@click.version_option(retrieve_app_version(), prog_name="EpomakerController")
 def cli() -> None:
     """A simple CLI for the EpomakerController."""
     pass
@@ -20,215 +41,130 @@ def cli() -> None:
 
 @cli.command()
 @click.argument("image_path", type=click.Path(exists=True))
-def upload_image(image_path: str) -> None:
+@wrapped_command
+def upload_image(controller: EpomakerController, image_path: str) -> None:
     """Upload an image to the Epomaker device.
 
     Args:
+        controller (EpomakerController): Passed from wrapped_command() decorator
         image_path (str): The path to the image file to upload.
     """
-    try:
-        controller = EpomakerController(dry_run=False)
-        if controller.open_device():
-            print("Uploading, you should see the status on the keyboard screen.\n"
-                  "The keyboard will be unresponsive during this process.")
-            controller.send_image(image_path)
-            click.echo("Image uploaded successfully.")
-        controller.close_device()
-    except Exception as e:
-        click.echo(f"Failed to upload image: {e}")
+    controller.send_image(image_path)
+    Logger.log_info("Image uploaded successfully.")
+
+
+@cli.command()
+@wrapped_command
+def clear_screen(controller: EpomakerController) -> None:
+    """
+    Clear the screen.
+    Please note, that you cannot revert this action!
+    """
+    controller.clear_image()
+    Logger.log_info("Screen is cleared.")
 
 
 @cli.command()
 @click.argument("r", type=int)
 @click.argument("g", type=int)
 @click.argument("b", type=int)
-def set_rgb_all_keys(r: int, g: int, b: int) -> None:
+@wrapped_command
+def set_rgb_all_keys(controller: EpomakerController, r: int, g: int, b: int) -> None:
     """Set RGB colour for all keys.
 
     Args:
+        controller: Passed from wrapped_command() decorator
         r (int): The red value (0-255).
         g (int): The green value (0-255).
         b (int): The blue value (0-255).
     """
-    try:
-        mapping = EpomakerKeyRGBCommand.KeyMap()
-        for key in ALL_KEYBOARD_KEYS:
-            mapping[key] = (r, g, b)
-        frames = [EpomakerKeyRGBCommand.KeyboardRGBFrame(mapping, 50)]
-        controller = EpomakerController(dry_run=False)
-        if controller.open_device():
-            controller.send_keys(frames)
-            click.echo(f"All keys set to RGB({r}, {g}, {b}) successfully.")
-        controller.close_device()
-    except Exception as e:
-        click.echo(f"Failed to set RGB for all keys: {e}")
+    controller.set_rgb_all_keys(r, g, b)
+    Logger.log_info(f"All keys set to RGB({r}, {g}, {b}) successfully.")
+
+@cli.command()
+@wrapped_command
+def cycle_light_modes(controller: EpomakerController) -> None:
+    """Cycle through the light modes."""
+    Logger.log_info(f"Cycling through {len(Profile.Mode)} modes, waiting 5 seconds on each")
+    controller.cycle_light_modes()
+    Logger.log_info("Cycled through all light modes successfully.")
 
 
 @cli.command()
-def cycle_light_modes() -> None:
-    """Cycle through the light modes.
-
-    """
-    try:
-        controller = EpomakerController(dry_run=False)
-        if not controller.open_device():
-            click.echo("Failed to open device.")
-            return
-
-        print(f"Cycling through {len(Profile.Mode)} modes, waiting 5 seconds on each")
-        counter = 1
-        for mode in Profile.Mode:
-            profile = Profile(
-                mode=mode,
-                speed=Profile.Speed.DEFAULT,
-                brightness=Profile.Brightness.DEFAULT,
-                dazzle=Profile.Dazzle.OFF,
-                option=Profile.Option.OFF,
-                rgb=(180, 180, 180),
-            )
-            command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
-            controller._send_command(command)
-            click.echo(
-                f"[{counter}/{len(Profile.Mode)}] Cycled to light mode: {mode.name}"
-            )
-            time.sleep(5)
-            counter += 1
-
-        controller.close_device()
-        click.echo("Cycled through all light modes successfully.")
-    except Exception as e:
-        click.echo(f"Failed to cycle light modes: {e}")
-
-
-@cli.command()
-def send_time() -> None:
-    """Send the current time to the Epomaker device.
-
-    """
-    try:
-        controller = EpomakerController(dry_run=False)
-        if controller.open_device():
-            controller.send_time()
-            click.echo("Time sent successfully.")
-        controller.close_device()
-    except Exception as e:
-        click.echo(f"Failed to send time: {e}")
+@wrapped_command
+def send_time(controller: EpomakerController) -> None:
+    """Send the current time to the Epomaker device."""
+    controller.send_time()
+    Logger.log_info("Time sent successfully.")
 
 
 @cli.command()
 @click.argument("temperature", type=int)
-def send_temperature(temperature: int) -> None:
+@wrapped_command
+def send_temperature(controller: EpomakerController, temperature: int) -> None:
     """Send temperature to the Epomaker screen.
 
     Args:
+        controller (EpomakerController): Passed from wrapped_command() decorator
         temperature (int): The temperature value in C (0-100).
     """
-    try:
-        controller = EpomakerController(dry_run=False)
-        if controller.open_device():
-            controller.send_temperature(temperature)
-            click.echo("Temperature sent successfully.")
-        controller.close_device()
-    except Exception as e:
-        click.echo(f"Failed to send temperature: {e}")
+    controller.send_temperature(temperature)
+    Logger.log_info("Temperature sent successfully.")
 
 
 @cli.command()
 @click.argument("cpu", type=int)
-def send_cpu(cpu: int) -> None:
+@wrapped_command
+def send_cpu(controller: EpomakerController, cpu: int) -> None:
     """Send CPU usage percentage to the Epomaker screen.
 
     Args:
+        controller (EpomakerController): Passed from wrapped_command() decorator
         cpu (int): The CPU usage percentage (0-100).
     """
-    try:
-        controller = EpomakerController(dry_run=False)
-        if controller.open_device():
-            controller.send_cpu(cpu)
-            click.echo("CPU usage sent successfully.")
-        controller.close_device()
-    except Exception as e:
-        click.echo(f"Failed to send CPU usage: {e}")
+    controller.send_cpu(cpu)
+    Logger.log_info("CPU usage sent successfully.")
 
 
 @cli.command()
+@click.option(
+    "--test",
+    "test_mode",
+    is_flag=True,
+    help="Start daemon in test mode, sending random data.",
+)
 @click.argument("temp_key", type=str, required=False)
-def start_daemon(temp_key: str | None) -> None:
+@wrapped_command
+def start_daemon(controller: EpomakerController, temp_key: str | None, test_mode: bool) -> None:
     """Start a daemon to update the CPU usage and optionally a temperature.
 
     Args:
+        controller (EpomakerController): Passed from wrapped_command() decorator
         temp_key (str): A label corresponding to the device to monitor.
+        test_mode (bool): Send random ints instead of real values.
     """
-    try:
-        controller = EpomakerController(dry_run=False)
-        first = True
-        while True:
-            if not controller.open_device():
-                click.echo("Failed to open device.")
-                return
-            if first:
-                # Set current time and date
-                controller.send_time()
-                first = False
-
-            # Get CPU usage
-            cpu_usage = psutil.cpu_percent(interval=1)
-            cpu_usage_rounded = round(cpu_usage)
-            click.echo(f"CPU Usage: {cpu_usage}%, sending {cpu_usage_rounded}%")
-            controller.send_cpu(int(cpu_usage_rounded), from_daemon=True)
-
-            # Get device temperature using the provided key
-            if temp_key:
-                try:
-                    temps = psutil.sensors_temperatures()
-                    if temp_key in temps:
-                        cpu_temp = temps[temp_key][0].current
-                        rounded_cpu_temp = round(cpu_temp)
-                        click.echo(
-                            f"CPU Temperature ({temp_key}): {rounded_cpu_temp}°C"
-                        )
-                        controller.send_temperature(rounded_cpu_temp)
-                    else:
-                        available_keys = list(temps.keys())
-                        click.echo(
-                            (f"Temperature key {temp_key!r} not found."
-                             f"Available keys: {available_keys}")
-                        )
-                except AttributeError:
-                    click.echo("Temperature monitoring not supported on this system.")
-
-            controller.close_device()
-
-            time.sleep(3)
-    except KeyboardInterrupt:
-        click.echo("Daemon interrupted by user.")
-    except Exception as e:
-        click.echo(f"Failed to start daemon: {e}")
+    controller.start_daemon(temp_key, test_mode)
 
 
 @cli.command()
 def list_temp_devices() -> None:
     """List available temperature devices."""
-    try:
-        temps = psutil.sensors_temperatures()
-        if not temps:
-            click.echo("No temperature sensors found.")
-            return
-
-        for key, entries in temps.items():
-            click.echo(f"\nTemperature key: {key}")
-            for entry in entries:
-                click.echo(f"  Label: {entry.label or 'N/A'}")
-                click.echo(f"  Current: {entry.current}°C")
-                click.echo(f"  High: {entry.high or 'N/A'}°C")
-                click.echo(f"  Critical: {entry.critical or 'N/A'}°C")
-    except AttributeError:
-        click.echo("Temperature monitoring not supported on this system.")
+    print_temp_devices()
 
 
 @cli.command()
-@click.option("--print", "print_info", is_flag=True, help="Print all available information about the connected keyboard.")
-@click.option("--udev", "generate_udev", is_flag=True, help="Generate a udev rule for the connected keyboard.")
+@click.option(
+    "--print",
+    "print_info",
+    is_flag=True,
+    help="Print all available information about the connected keyboard.",
+)
+@click.option(
+    "--udev",
+    "generate_udev",
+    is_flag=True,
+    help="Generate a udev rule for the connected keyboard.",
+)
 def dev(print_info: bool, generate_udev: bool) -> None:
     """Various dev tools.
 
@@ -236,22 +172,70 @@ def dev(print_info: bool, generate_udev: bool) -> None:
         print_info (bool): Print information about the connected keyboard.
         generate_udev (bool): Generate a udev rule for the connected keyboard.
     """
+
+    # We're doing pretty much the same we were doing in if-elif-else chain,
+    # but now we're doing it once
+
+    controller = EpomakerController(CONFIG_MAIN)
+
+    if not controller.open_device(only_info=True):
+        Logger.log_error("Could not find device")
+        return
+
     if print_info:
-        click.echo("Printing all available information about the connected keyboard.")
-        controller = EpomakerController(dry_run=False)
-        if not controller.open_device(only_info=True):
-            click.echo("Failed to open device.")
-            return
+        controller.print_device_info()
     elif generate_udev:
-        click.echo("Generating udev rule for the connected keyboard.")
-        # Init controller to get the PID
-        controller = EpomakerController(dry_run=False)
-        if not controller.open_device(only_info=True):
-            click.echo("Failed to open device.")
-            return
         controller.generate_udev_rule()
     else:
-        click.echo("No dev tool specified.")
+        # It would be better to print help string or something like that
+        Logger.log_error("No dev tool specified.")
+        click.echo("--print Print all available information about the connected keyboard.")
+        click.echo("--udev Generate a udev rule for the connected keyboard.")
+
+
+@cli.command()
+@wrapped_command
+def set_keys(controller: EpomakerController) -> None:
+    """Open a simple GUI to set individual key colours."""
+    root = tk.Tk()
+    RGBKeyboardGUI(
+        root, controller.send_keys, controller.config.config_layout, controller.config.config_keymap
+    )
+
+    def on_close() -> None:
+        # The device will be closed with context manager
+        root.destroy()
+
+    root.protocol("WM_DELETE_WINDOW", on_close)
+    root.mainloop()
+
+
+@cli.command()
+@click.argument("key_index", type=int)
+@click.argument("key_combo", type=int)
+@wrapped_command
+def remap_keys(controller: EpomakerController, key_index: int, key_combo: int) -> None:
+    """Remap key functionality using a KeyboardKey index (from) and a USB HID index (to)"""
+    controller.remap_keys(key_index, key_combo)
+
+
+@cli.command()
+@click.option("--filter", default=None, help="Filter the keymap by key name")
+def show_keymap(keymap_filter: str | None) -> None:
+    controller = EpomakerController(CONFIG_MAIN, dry_run=True)
+    data = controller.config.config_keymap.data
+
+    # It's better not to use assert in production
+    if not data:
+        Logger.log_error("No keymap data")
+        return
+
+    to_show = list(data)
+    if keymap_filter:
+        to_show = [item for item in data if keymap_filter.lower() in item["name"].lower()]
+
+    for item in to_show:
+        print(f"{item['name']}: {item['value']}")
 
 
 if __name__ == "__main__":

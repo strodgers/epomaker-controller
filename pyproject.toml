@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "EpomakerController"
-version = "0.0.5"
+version = "0.0.8"
 description = "Epomakercontroller"
 authors = ["Sam Rodgers <samueltrodgers@duck.com>"]
 license = "MIT"
@@ -9,11 +9,16 @@ homepage = "https://github.com/strodgers/EpomakerController"
 repository = "https://github.com/strodgers/EpomakerController"
 documentation = "https://EpomakerController.readthedocs.io"
 
+include = [
+    "src/epomakercontroller/configs/layouts/*.json",
+    "src/epomakercontroller/configs/keymaps/*.json",
+]
+
 [tool.poetry.urls]
 Changelog = "https://github.com/strodgers/EpomakerController/releases"
 
 [tool.poetry.dependencies]
-python = ">=3.9,<4.0"
+python = ">=3.12,<4.0"
 appdirs = "==1.4.4"
 click = ">=8.0.1"
 hidapi = "==0.14.0"
@@ -21,10 +26,12 @@ numpy = "<2.0"
 opencv-python-headless = "==4.10.0.82"
 psutil = ">=6.0.0"
 python-dateutil = "==2.8.2"
+gpustat = ">=1.1.1"
 
 [tool.poetry.dev-dependencies]
 matplotlib = "==3.5.3"
 pytest = ">=6.2.5"
+types-psutil = "^5.0"
 
 [tool.poetry.scripts]
 epomakercontroller = "epomakercontroller.cli:cli"
