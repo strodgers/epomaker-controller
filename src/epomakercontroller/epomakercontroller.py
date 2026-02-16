@@ -67,11 +67,6 @@ class HIDInfo:
     event_path: str
     hid_path: Optional[str] = None
 
-USE_WIRELESS = False
-PRODUCT_IDS = PRODUCT_IDS_WIRED
-if USE_WIRELESS:
-    PRODUCT_IDS += PRODUCT_IDS_24G
-
 
 class EpomakerController(ControllerBase):
     COMMAND_MIN_DELAY = 1 / 1000  # ms.
