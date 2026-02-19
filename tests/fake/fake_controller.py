@@ -1,7 +1,8 @@
 from __future__ import annotations
+
 import typing
 
-from epomakercontroller.commands.EpomakerCommand import EpomakerCommand
+from epomakercontroller.commands.EpomakerPollCommand import EpomakerPollCommand
 from epomakercontroller.epomakercontroller import EpomakerConfig, EpomakerController
 
 if typing.TYPE_CHECKING:
@@ -31,5 +32,16 @@ class FakeEpomakerController(EpomakerController):
     def close_device(self):
         self.is_ready = False
 
-    def _send_command(self, command: EpomakerCommand):
+    def poll(self):
+        poll_command = EpomakerPollCommand()
+        self._send_command(poll_command, poll_first=False)
+
+    def _send_command(
+        self,
+        command,
+        sleep_time: float = 1 / 1000,
+        poll_first: bool = False
+    ) -> None:
+        if poll_first:
+            self.poll()
         self.commands.append(command)

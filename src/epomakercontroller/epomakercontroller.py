@@ -16,6 +16,7 @@ from typing import override
 from datetime import datetime
 from json import dumps
 
+from .commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
@@ -304,7 +305,7 @@ class EpomakerController(ControllerBase):
         )
 
     def _send_command(
-        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1,
+        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 1 / 1000,
         poll_first: bool = False
     ) -> None:
         """Sends a command to the HID device.
@@ -338,7 +339,7 @@ class EpomakerController(ControllerBase):
                 # We need to give some time for the screen to process out report
                 # Otherwise it will hang processing queue
                 # Not the best way to do it tho, but at least it works...
-                with TimeHelper(min_duration=EpomakerController.COMMAND_MIN_DELAY):
+                with TimeHelper(min_duration=sleep_time):
                     self.device.send_feature_report(packet.get_all_bytes())
 
     @staticmethod
@@ -355,6 +356,14 @@ class EpomakerController(ControllerBase):
         if not r:
             r = range(0, 100)  # 0 to 99
         return value in r
+
+    def send_wireless_init(self):
+        """
+        Sends wireless init command to the HID device. Required before 2.4GHz mode usage
+        """
+        command = EpomakerWirelessInitCommand()
+        command.prepare_from_sequence()
+        self._send_command(command, poll_first=True)
 
     def send_image(self, image_path: str) -> None:
         """Sends an image to the HID device.
@@ -406,7 +415,6 @@ class EpomakerController(ControllerBase):
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         Logger.log_info(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
-
 
     def send_cpu(self, cpu: int) -> None:
         """Sends the CPU percentage to the HID device.
