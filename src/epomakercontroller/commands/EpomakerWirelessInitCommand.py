@@ -48,3 +48,5 @@ class EpomakerWirelessInitCommand(EpomakerCommand):
             chunk = self.CHUNKS[report_index]
             report = Report(chunk, index=report_index + self.structure.number_of_starter_reports, checksum_index=None)
             self._insert_report(report)
+
+        self.report_data_prepared = True

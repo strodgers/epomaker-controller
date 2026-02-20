@@ -1,5 +1,5 @@
 from epomakercontroller.commands.EpomakerPollCommand import EpomakerPollCommand
-from src.epomakercontroller.commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
+from epomakercontroller.commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
 from fake.fake_controller import FakeEpomakerController
 import epomakercontroller.cli as cli
 

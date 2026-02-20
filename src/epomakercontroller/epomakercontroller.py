@@ -133,13 +133,12 @@ class EpomakerController(ControllerBase):
         if only_info:
             return True
 
-        # Find the device with the specified interface number so we can open by path
-        # This way we don't block usage of the keyboard whilst the device is open
-        device_path = self._find_device_path()
-        if device_path is None:
-            return False
+        self._open_device(product_id)
 
-        self._open_device(device_path)
+        if self.config.use_wireless and self.device:
+            Logger.log_info("Sending wireless initialization sequence command")
+            self.send_wireless_init()
+
         return self.device is not None
 
     @override
@@ -166,14 +165,14 @@ class EpomakerController(ControllerBase):
 
         return None
 
-    def _open_device(self, device_path: bytes) -> None:
+    def _open_device(self, product_id: int) -> None:
         """Opens the USB HID device.
 
         Args:
-            device_path (bytes): The path to the device.
+            product_id (int): The product ID.
         """
         try:
-            self.device.open_path(device_path)
+            self.device.open(self.config.vendor_id, product_id)
         except IOError as e:
             Logger.log_error(
                 f"Failed to open device: {e}\n"
@@ -236,25 +235,6 @@ class EpomakerController(ControllerBase):
                 indent="  ",
             )
         )
-
-    def _find_device_path(self) -> Optional[bytes]:
-        """Finds the device path with the specified interface number.
-
-        Returns:
-            Optional[bytes]: The device path if found, None otherwise.
-        """
-        input_dir = "/sys/class/input"
-        hid_infos = EpomakerController._get_hid_infos(
-            input_dir, self.config.device_description
-        )
-
-        if not hid_infos:
-            Logger.log_warning(f"No events found with description: '{self.config.device_description}'")
-            return None
-
-        EpomakerController._populate_hid_paths(hid_infos)
-
-        return self._select_device_path(hid_infos)
 
     @staticmethod
     def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:

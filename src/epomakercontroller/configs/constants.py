@@ -16,7 +16,7 @@ if os.name == "nt":
     if not os.path.exists(ROOT_FOLDER):
         os.mkdir(ROOT_FOLDER)
 
-TMP_FOLDER = os.path.abspath(ROOT_FOLDER + "tmp/")
+TMP_FOLDER = os.path.abspath("./temp")
 ETC_FOLDER = os.path.abspath(ROOT_FOLDER + "etc/")
 
 # Create folder on Windows
@@ -26,8 +26,8 @@ if os.name == "nt":
     if not os.path.exists(ETC_FOLDER):
         os.mkdir(ETC_FOLDER)
 
-RULE_FILE_PATH = ETC_FOLDER + "udev/rules.d/99-epomaker-rt100.rules"
-TMP_FILE_PATH = TMP_FOLDER + "99-epomaker-rt100.rules"
+RULE_FILE_PATH = ETC_FOLDER + "/udev/rules.d/99-epomaker-rt100.rules"
+TMP_FILE_PATH = TMP_FOLDER + "/99-epomaker-rt100.rules"
 PATH_TO_DEFAULT_CONFIG = "src/epomakercontroller/configs/default.json"
 
 DAEMON_TIME_DELAY = 1.6
