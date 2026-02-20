@@ -16,7 +16,7 @@ if os.name == "nt":
     if not os.path.exists(ROOT_FOLDER):
         os.mkdir(ROOT_FOLDER)
 
-TMP_FOLDER = os.path.abspath("./temp")
+TMP_FOLDER = os.path.abspath("./.epomaker_controller")
 ETC_FOLDER = os.path.abspath(ROOT_FOLDER + "etc/")
 
 # Create folder on Windows
