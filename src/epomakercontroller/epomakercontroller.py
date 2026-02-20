@@ -16,6 +16,7 @@ from typing import override
 from datetime import datetime
 from json import dumps
 
+from .commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
@@ -132,13 +133,12 @@ class EpomakerController(ControllerBase):
         if only_info:
             return True
 
-        # Find the device with the specified interface number so we can open by path
-        # This way we don't block usage of the keyboard whilst the device is open
-        device_path = self._find_device_path()
-        if device_path is None:
-            return False
+        self._open_device(product_id)
 
-        self._open_device(device_path)
+        if self.config.use_wireless and self.device:
+            Logger.log_info("Sending wireless initialization sequence command")
+            self.send_wireless_init()
+
         return self.device is not None
 
     @override
@@ -165,14 +165,14 @@ class EpomakerController(ControllerBase):
 
         return None
 
-    def _open_device(self, device_path: bytes) -> None:
+    def _open_device(self, product_id: int) -> None:
         """Opens the USB HID device.
 
         Args:
-            device_path (bytes): The path to the device.
+            product_id (int): The product ID.
         """
         try:
-            self.device.open_path(device_path)
+            self.device.open(self.config.vendor_id, product_id)
         except IOError as e:
             Logger.log_error(
                 f"Failed to open device: {e}\n"
@@ -236,25 +236,6 @@ class EpomakerController(ControllerBase):
             )
         )
 
-    def _find_device_path(self) -> Optional[bytes]:
-        """Finds the device path with the specified interface number.
-
-        Returns:
-            Optional[bytes]: The device path if found, None otherwise.
-        """
-        input_dir = "/sys/class/input"
-        hid_infos = EpomakerController._get_hid_infos(
-            input_dir, self.config.device_description
-        )
-
-        if not hid_infos:
-            Logger.log_warning(f"No events found with description: '{self.config.device_description}'")
-            return None
-
-        EpomakerController._populate_hid_paths(hid_infos)
-
-        return self._select_device_path(hid_infos)
-
     @staticmethod
     def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:
         """Retrieve HID information based on the given description."""
@@ -304,7 +285,7 @@ class EpomakerController(ControllerBase):
         )
 
     def _send_command(
-        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 0.1,
+        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 1 / 1000,
         poll_first: bool = False
     ) -> None:
         """Sends a command to the HID device.
@@ -338,7 +319,7 @@ class EpomakerController(ControllerBase):
                 # We need to give some time for the screen to process out report
                 # Otherwise it will hang processing queue
                 # Not the best way to do it tho, but at least it works...
-                with TimeHelper(min_duration=EpomakerController.COMMAND_MIN_DELAY):
+                with TimeHelper(min_duration=sleep_time):
                     self.device.send_feature_report(packet.get_all_bytes())
 
     @staticmethod
@@ -355,6 +336,14 @@ class EpomakerController(ControllerBase):
         if not r:
             r = range(0, 100)  # 0 to 99
         return value in r
+
+    def send_wireless_init(self):
+        """
+        Sends wireless init command to the HID device. Required before 2.4GHz mode usage
+        """
+        command = EpomakerWirelessInitCommand()
+        command.prepare_from_sequence()
+        self._send_command(command, poll_first=True)
 
     def send_image(self, image_path: str) -> None:
         """Sends an image to the HID device.
@@ -406,7 +395,6 @@ class EpomakerController(ControllerBase):
         temperature_command = EpomakerTempCommand.EpomakerTempCommand(temperature)
         Logger.log_info(f"Sending temperature {temperature}C")
         self._send_command(temperature_command)
-
 
     def send_cpu(self, cpu: int) -> None:
         """Sends the CPU percentage to the HID device.
