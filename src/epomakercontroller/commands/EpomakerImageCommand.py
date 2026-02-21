@@ -60,6 +60,8 @@ class EpomakerImageCommand(EpomakerCommand):
 
         return r, g, b
 
+    # TODO: fix this pylint warning, mova some functionality to separate methods
+    # pylint: disable=too-many-locals
     def encode_image(self, image_path: str) -> None:
         """Encode an image to 16-bit RGB565.
 
@@ -90,6 +92,7 @@ class EpomakerImageCommand(EpomakerCommand):
                 for x in range(image.shape[1]):
                     r, g, b = image[y, x]
                     image_16bit[y, x] = self._encode_rgb565(r, g, b)
+        # pylint: disable=broad-exception-caught
         except Exception as e:
             Logger.log_error(f"Exception while converting image: {e}")
             return
@@ -146,11 +149,9 @@ class EpomakerImageCommand(EpomakerCommand):
                 data_buff_pointer : data_buff_pointer + data_buff_length
             ].tobytes()
         )
-        # Need some padding at the end of the image data
-        footer_report._pad()
-        self._insert_report(footer_report)
 
-        self.report_footer_prepared = True
+        self._insert_report(footer_report)
+        self.report_footer_prepared = footer_report.prepared
 
         if len(self.reports) != len(self.structure):
             Logger.log_error(f"Expected {len(self.structure)} reports, got {len(self.reports)}.")

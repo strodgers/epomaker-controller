@@ -1,16 +1,26 @@
+from __future__ import annotations
+
+import typing
+
 from pathlib import Path
 import tkinter as tk
-from tkinter.colorchooser import askcolor as askcolour  # thats right
+from tkinter.colorchooser import askcolor as askcolour  # that's right
 
 from .keyboard_keys import KeyboardKey, KeyboardKeys
 from ..commands.EpomakerKeyRGBCommand import KeyMap, KeyboardRGBFrame
-from typing import Callable, Literal
 from ..configs.configs import Config
+from ..logger.logger import Logger
+
+
+if typing.TYPE_CHECKING:
+    from typing import Callable, Literal
+
 
 DEFAULT_KEY_WIDTH = 8
 DFAULT_KEY_HEIGHT = 4
 
 
+# pylint: disable=too-many-instance-attributes
 class RGBKeyboardGUI:
     def __init__(
         self,
@@ -54,15 +64,15 @@ class RGBKeyboardGUI:
         if identifier == "w":
             self.key_width = int(DEFAULT_KEY_WIDTH * value)
             return True
-        elif identifier == "h":
+        if identifier == "h":
             self.key_height = int(DFAULT_KEY_HEIGHT * value)
             return True
-        elif identifier == "x":
+        if identifier == "x":
             self.col_offset += int(DEFAULT_KEY_WIDTH * value)
         elif identifier == "y":
             self.row_offset += int(DFAULT_KEY_HEIGHT * value)
         else:
-            print(f"Warning: Unknown customization identifier: {identifier}")
+            Logger.log_warning(f"Unknown customization identifier: {identifier}")
 
         return False
 
@@ -100,8 +110,8 @@ class RGBKeyboardGUI:
                         keyboardkeys_row.append(key)
                     else:
                         # We will still display the key but it will show as being disabled.
-                        print(
-                            f"Warning: key from config json with name {col} does not match any KeyboardKey"
+                        Logger.log_warning(
+                            f"key from config json with name {col} does not match any KeyboardKey"
                         )
 
                     # Create the button
@@ -162,7 +172,7 @@ class RGBKeyboardGUI:
                 self.frame.overlay(self.selected_key, (r, g, b))
                 self.callback([self.frame])
 
-                print(
+                Logger.log_info(
                     f"Set {','.join([k.name for k in self.selected_key])} keys to {colour}"
                 )
         self.selected_key.clear()

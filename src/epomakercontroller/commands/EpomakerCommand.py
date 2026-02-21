@@ -2,10 +2,10 @@
 
 import dataclasses
 from typing import Iterator
-from .reports.Report import Report, ReportCollection
 import numpy as np
 import numpy.typing as npt
 
+from .reports.Report import Report, ReportCollection
 from ..logger.logger import Logger
 
 
@@ -106,8 +106,7 @@ class EpomakerCommand:
         Yields:
             Iterator[Report]: The reports in the command.
         """
-        for report in self.reports:
-            yield report
+        yield from self.reports
 
     def __getitem__(self, key: int) -> Report:
         """Gets a report by index.
@@ -127,5 +126,4 @@ class EpomakerCommand:
         Yields:
             Iterator[bytes]: The report bytes.
         """
-        for report_bytes in self.reports.iter_report_bytes():
-            yield report_bytes
+        yield from self.reports.iter_report_bytes()

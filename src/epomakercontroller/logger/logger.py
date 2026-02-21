@@ -12,6 +12,8 @@ class LogScope(enum.StrEnum):
 class Logger:
     @staticmethod
     def log(scope: LogScope, message: str):
+        # TODO: Refactor to logging library w/ custom format + file writing
+        # pylint: disable=bad-builtin
         print(f"{scope.value}: {message}")
 
     @staticmethod

@@ -29,7 +29,7 @@ class Report:
 
     def __post_init__(self) -> None:
         """Initializes the report after the dataclass is created."""
-        if self.header_format_values == {}:
+        if not self.header_format_values:
             self.report_bytearray = bytearray.fromhex(self.header_format_string)
         else:
             self.report_bytearray = bytearray.fromhex(
@@ -133,8 +133,7 @@ class ReportCollection:
         Yields:
             Iterator[Report]: The reports in the collection.
         """
-        for report in self.reports:
-            yield report
+        yield from self.reports
 
     def __getitem__(self, key: int) -> Report:
         """Gets a report by index.
@@ -155,21 +154,18 @@ class ReportCollection:
         """
         return len(self.reports)
 
-    def __setitem__(self, report: Report) -> None:
+    def __setitem__(self, index: int, report: Report) -> None:
         """Adds a report to the collection.
 
         Args:
             report (Report): The report to add.
         """
-        if report.index in [
+        if report.index in set(
             r.index for r in self.reports
-        ]:
-            # Ignoring duplicating report, which is not good btw,
-            # but currently I'm maintaining previous behaviour
-            # TODO: Review code logic and refactor if needed
+        ):
             return
 
-        self.reports.append(report)
+        self.reports.insert(index, report)
 
     def append(self, report: Report) -> None:
         """Appends a report to the collection.

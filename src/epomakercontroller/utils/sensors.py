@@ -1,7 +1,10 @@
-import psutil
 import random
+import psutil
 import gpustat
 from pynvml import NVMLError
+
+from epomakercontroller.logger.logger import Logger
+
 
 def get_cpu_usage(test_mode: bool = False) -> int:
     """Get the current CPU usage.
@@ -38,15 +41,14 @@ def get_device_temp(temp_key: str, test_mode: bool = False) -> int:
         device_temp = temps[temp_key]
         return int(round(device_temp))
 
-    else:
-        available_keys = list(temps.keys())
-        print(
-            (
-                f"Temperature key {temp_key!r} not found."
-                f"Available keys: {available_keys}"
-            )
+    available_keys = list(temps.keys())
+    # pylint: disable=bad-builtin
+    print(
+        (
+            f"Temperature key {temp_key!r} not found."
+            f"Available keys: {available_keys}"
         )
-
+    )
     return 0
 
 
@@ -54,15 +56,15 @@ def _get_temp_devices() -> dict[str, float] | None:
     try:
         hw_temperatures = psutil.sensors_temperatures()
     except AttributeError:
-        print("Temperature monitoring not supported on this system.")
+        Logger.log_error("Temperature monitoring not supported on this system.")
         return None
     try:
         gpu_stats = gpustat.new_query()
     except OSError as e:
-        print(f"No NVIDIA sensors available: {e.message}")
+        Logger.log_error(f"No NVIDIA sensors available: {e.strerror}")
         gpu_stats = None
     except NVMLError as e:
-        print(f"No NVIDIA driver available: {e}")
+        Logger.log_error(f"No NVIDIA driver available: {e}")
         gpu_stats = None
 
     temperature_sensors: dict[str, float] = {}
@@ -88,10 +90,15 @@ def print_temp_devices() -> None:
     """Print available temperature sensors by key and current temperature."""
     temps = _get_temp_devices()
     if not temps:
-        print("No temperature sensors found.")
+        Logger.log_error("No temperature sensors found.")
         return
 
     format_whitespace = len(max(temps.keys(), key=len)) + 10
-    print("{key:{whitespace}} {value}".format(key="DEVICE KEY", whitespace=format_whitespace, value="CURRENT TEMPERATURE"))
+    # pylint: disable=bad-builtin
+    print(
+        f"DEVICE KEY:{format_whitespace} CURRENT TEMPERATURE"
+    )
+
     for device_key, temp in temps.items():
-        print("{key:{whitespace}} {value}°C".format(key=device_key, whitespace=format_whitespace, value=temp))
+        # pylint: disable=bad-builtin
+        print(f"{device_key}:{format_whitespace} {temp}°C")

@@ -9,12 +9,14 @@ import typing
 import dataclasses
 import os
 import time
-import hid  # type: ignore[import-not-found]
 import subprocess
 import re
+
 from typing import override
 from datetime import datetime
 from json import dumps
+
+import hid  # type: ignore[import-not-found]
 
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
@@ -43,7 +45,12 @@ if typing.TYPE_CHECKING:
     from typing import Any, Optional
 
 
+# pylint: disable=R0903
 class EpomakerConfig:
+    """
+    Configuration class that stores EpomakerController settings, parsed from config.json
+    """
+
     def __init__(self, config_main: Config) -> None:
         all_configs = get_all_configs()
         self.config_layout = all_configs.get(ConfigType.CONF_LAYOUT)
@@ -156,6 +163,7 @@ class EpomakerController(ControllerBase):
             int | None: The product ID if found, None otherwise.
         """
 
+        # pylint: disable=W0511
         # Todo: optimization
         for pid in self.config.product_ids:
             self.device_list = hid.enumerate(self.config.vendor_id, pid)
@@ -228,6 +236,7 @@ class EpomakerController(ControllerBase):
             device["vendor_id"] = f"0x{device['vendor_id']:04x}"
             device["product_id"] = f"0x{device['product_id']:04x}"
 
+        # pylint: disable=bad-builtin
         print(
             dumps(
                 devices,
@@ -315,8 +324,8 @@ class EpomakerController(ControllerBase):
 
         try:
             self.device.get_product_string()
-        except:  # noqa: E722
-            raise IOError("Could not communicate with device")
+        except IOError as e:  # noqa: E722
+            raise IOError("Could not communicate with device") from e
 
         if not command.report_data_prepared:
             return
