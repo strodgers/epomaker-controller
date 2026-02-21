@@ -236,54 +236,6 @@ class EpomakerController(ControllerBase):
             )
         )
 
-    @staticmethod
-    def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:
-        """Retrieve HID information based on the given description."""
-        hid_infos = []
-        for event in os.listdir(input_dir):
-            if event.startswith("event"):
-                device_name_path = os.path.join(input_dir, event, "device", "name")
-                try:
-                    with open(device_name_path, "r", encoding="utf-8") as f:
-                        device_name = f.read().strip()
-                        if re.search(description, device_name):
-                            event_path = os.path.join(input_dir, event)
-                            hid_infos.append(
-                                HIDInfo(device_name, event_path)
-                            )
-                except FileNotFoundError:
-                    continue
-        return hid_infos
-
-    @staticmethod
-    def _populate_hid_paths(hid_infos: list[HIDInfo]) -> None:
-        """Populate the HID paths for each HIDInfo object in the list."""
-        for hi in hid_infos:
-            device_symlink = os.path.join(hi.event_path, "device")
-            if not os.path.islink(device_symlink):
-                Logger.log_warning(f"No 'device' symlink found in {hi.event_path}")
-                continue
-
-            hid_device_path = os.path.realpath(device_symlink)
-            match = re.search(r"\b\d+-[\d.]+:\d+\.\d+\b", hid_device_path)
-            hi.hid_path = match.group(0) if match else None
-
-    def _select_device_path(self, hid_infos: list[HIDInfo]) -> Optional[bytes]:
-        """Select the appropriate device path based on interface preference."""
-        device_name_filter = "Wireless" if self.config.use_wireless else "Wired"
-        filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
-
-        if not filtered_devices:
-            Logger.log_warning(f"Could not find {device_name_filter} interface")
-            return None
-
-        selected_device = filtered_devices[0]
-        return (
-            selected_device.hid_path.encode("utf-8")
-            if selected_device.hid_path
-            else None
-        )
-
     def _send_command(
         self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 1 / 1000,
         poll_first: bool = False
