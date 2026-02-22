@@ -1,0 +1,17 @@
+[MESSAGES CONTROL]
+disable=
+    missing-module-docstring,
+    missing-function-docstring,
+    missing-class-docstring,
+    c-extension-no-member,
+    no-member,
+    invalid-name,
+    too-few-public-methods,
+    fixme # Remove this someday and fix every TODO
+
+[FORMAT]
+max-line-length=121
+
+[DEPRECATED_BUILTINS]
+bad-functions=print
+load-plugins=pylint.extensions.bad_builtin

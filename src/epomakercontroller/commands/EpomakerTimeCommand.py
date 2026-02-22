@@ -28,8 +28,6 @@ class EpomakerTimeCommand(EpomakerCommand):
         Returns:
             str: The formatted command string.
         """
-        print("Using:", time)
-
         # Example of formatting for a specific date and time format
         # Adjust the formatting based on your specific requirements
         year = time.year

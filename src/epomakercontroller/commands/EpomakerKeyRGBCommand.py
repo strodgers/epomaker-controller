@@ -73,7 +73,8 @@ class KeyboardRGBFrame:
 
 class EpomakerKeyRGBCommand(EpomakerCommand):
     """Change a selection of keys to specific RGB values."""
-
+    # TODO: Move some logic to separate method to fix the following pylint warning
+    # pylint: disable=too-many-locals
     def __init__(self, frames: list[KeyboardRGBFrame]) -> None:
         """Initializes the EpomakerKeyRGBCommand with a list of frames.
 
@@ -151,9 +152,10 @@ class EpomakerKeyRGBCommand(EpomakerCommand):
         """
         report_index_count = 0
         data_buffer_length = BUFF_LENGTH - self.report_data_header_length
-        for report in self.get_data_reports():
-            report_data = report[self.report_data_header_length :]
-            if report_index_count <= index < (report_index_count + data_buffer_length):
-                return True
-            report_index_count += len(report_data)
+
+        report_data = report[self.report_data_header_length :]
+        if report_index_count <= index < (report_index_count + data_buffer_length):
+            return True
+        report_index_count += len(report_data)
+
         return False

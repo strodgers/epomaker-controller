@@ -15,6 +15,8 @@ from ...logger.logger import Logger
 class ReportWithData(Report):
     """Represents a report with additional data."""
 
+    # TODO: Fix the following warning -->
+    # pylint: disable=too-many-arguments, too-many-positional-arguments
     def __init__(
         self,
         header_format_string: str,

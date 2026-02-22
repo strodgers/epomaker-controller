@@ -1,9 +1,10 @@
 # src/epomakercontroller/cli.py
 """Simple CLI for the EpomakerController package."""
 
-import click
 import tkinter as tk
 from functools import wraps
+
+import click
 
 from .commands.data.constants import Profile
 from .configs.configs import load_main_config
@@ -36,7 +37,6 @@ def wrapped_command(func):
 @click.version_option(retrieve_app_version(), prog_name="EpomakerController")
 def cli() -> None:
     """A simple CLI for the EpomakerController."""
-    pass
 
 
 @cli.command()
@@ -235,7 +235,7 @@ def show_keymap(keymap_filter: str | None) -> None:
         to_show = [item for item in data if keymap_filter.lower() in item["name"].lower()]
 
     for item in to_show:
-        print(f"{item['name']}: {item['value']}")
+        Logger.log_info(f"{item['name']}: {item['value']}")
 
 
 if __name__ == "__main__":
