@@ -23,7 +23,7 @@ class KeyboardKeys:
 
     def __init__(self, config: Config) -> None:
         if not config:
-            Logger.log_error(f"KeyboardKeys config is empty")
+            Logger.log_error("KeyboardKeys config is empty")
             return
 
         self.all_keys = [KeyboardKey(**key) for key in config.data]
@@ -32,8 +32,7 @@ class KeyboardKeys:
             self.name_to_key_dict[key.name] = key
 
     def __iter__(self) -> Iterator[KeyboardKey]:
-        for key in self.all_keys:
-            yield key
+        yield from self.all_keys
 
     def get_key_by_name(self, name: str) -> KeyboardKey | None:
         return self.name_to_key_dict.get(name, None)

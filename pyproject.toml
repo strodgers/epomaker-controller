@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "EpomakerController"
-version = "0.0.8"
+version = "0.0.9"
 description = "Epomakercontroller"
 authors = ["Sam Rodgers <samueltrodgers@duck.com>"]
 license = "MIT"
