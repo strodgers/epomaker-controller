@@ -10,7 +10,6 @@ import dataclasses
 import os
 import time
 import subprocess
-import re
 
 from typing import override
 from datetime import datetime
