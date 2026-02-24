@@ -9,7 +9,7 @@ def test_wireless_command_init_data():
     controller.send_wireless_init()
 
     assert controller.commands
-    reports = controller.commands[1].reports  # First will be poll command
+    reports = controller.commands[2].reports  # First will be poll command
     assert reports
     assert reports[0].header_format_string == "fe40"
 
@@ -22,7 +22,7 @@ def test_wireless_poll():
     controller.send_wireless_init()
 
     assert controller.commands
-    controller.commands.pop(1)
+    controller.commands.pop(2)
 
     for command in controller.commands:
         assert isinstance(command, EpomakerPollCommand)

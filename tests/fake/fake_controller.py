@@ -35,6 +35,7 @@ class FakeEpomakerController(EpomakerController):
     def poll(self):
         poll_command = EpomakerPollCommand()
         self._send_command(poll_command, poll_first=False)
+        return b"01010168"
 
     def _send_command(
         self,
