@@ -137,7 +137,7 @@ class EpomakerController(ControllerBase):
 
         if self.config.use_wireless and self.device:
             Logger.log_info("Sending wireless initialization sequence command")
-            self.send_wireless_init()
+            return self.device and self.send_wireless_init()
 
         return self.device is not None
 
@@ -289,13 +289,22 @@ class EpomakerController(ControllerBase):
             r = range(0, 100)  # 0 to 99
         return value in r
 
-    def send_wireless_init(self):
+    @staticmethod
+    def __check_whistle_response(response: bytes):
+        return "01010168" in response.hex()
+
+    def send_wireless_init(self) -> bool:
         """
         Sends wireless init command to the HID device. Required before 2.4GHz mode usage
         """
+
+        if self.__check_whistle_response(bytes(self.poll())):
+            return True
+
         command = EpomakerWirelessInitCommand()
         command.prepare_from_sequence()
         self._send_command(command, poll_first=True)
+        return self.__check_whistle_response(bytes(self.poll()))
 
     def send_image(self, image_path: str) -> None:
         """Sends an image to the HID device.
@@ -416,10 +425,10 @@ class EpomakerController(ControllerBase):
             time.sleep(sleep_seconds)
             counter += 1
 
-    def poll(self) -> None:
+    def poll(self) -> Any:
         poll_command = EpomakerPollCommand.EpomakerPollCommand()
         self._send_command(poll_command, poll_first=False)
-        _ = self.device.get_feature_report(0x00, 128)
+        return self.device.get_feature_report(0x00, 128)
 
     def set_profile(self, profile: Profile) -> None:
         """Set the keyboard profile."""

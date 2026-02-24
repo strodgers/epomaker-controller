@@ -29,7 +29,7 @@ class EpomakerWirelessInitCommand(EpomakerCommand):
         "fc",
         "920000000000006d",
         "fc",
-        "9700000000000068"
+        "9700000000000068",
         "fc",
     ]
 
