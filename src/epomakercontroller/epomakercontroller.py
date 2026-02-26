@@ -10,7 +10,6 @@ import dataclasses
 import os
 import time
 import subprocess
-import re
 
 from typing import override
 from datetime import datetime
@@ -18,6 +17,7 @@ from json import dumps
 
 import hid  # type: ignore[import-not-found]
 
+from .commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
@@ -33,7 +33,8 @@ from .commands import (
     EpomakerCpuCommand,
     EpomakerKeyRGBCommand,
     EpomakerProfileCommand,
-    EpomakerClearScreenCommand
+    EpomakerClearScreenCommand,
+    EpomakerPollCommand,
 )
 
 from .commands.data.constants import BUFF_LENGTH, Profile
@@ -138,13 +139,12 @@ class EpomakerController(ControllerBase):
         if only_info:
             return True
 
-        # Find the device with the specified interface number so we can open by path
-        # This way we don't block usage of the keyboard whilst the device is open
-        device_path = self._find_device_path()
-        if device_path is None:
-            return False
+        self._open_device(product_id)
 
-        self._open_device(device_path)
+        if self.config.use_wireless and self.device:
+            Logger.log_info("Sending wireless initialization sequence command")
+            return self.device and self.send_wireless_init()
+
         return self.device is not None
 
     @override
@@ -163,7 +163,6 @@ class EpomakerController(ControllerBase):
             int | None: The product ID if found, None otherwise.
         """
 
-        # pylint: disable=W0511
         # Todo: optimization
         for pid in self.config.product_ids:
             self.device_list = hid.enumerate(self.config.vendor_id, pid)
@@ -172,14 +171,14 @@ class EpomakerController(ControllerBase):
 
         return None
 
-    def _open_device(self, device_path: bytes) -> None:
+    def _open_device(self, product_id: int) -> None:
         """Opens the USB HID device.
 
         Args:
-            device_path (bytes): The path to the device.
+            product_id (int): The product ID.
         """
         try:
-            self.device.open_path(device_path)
+            self.device.open(self.config.vendor_id, product_id)
         except IOError as e:
             Logger.log_error(
                 f"Failed to open device: {e}\n"
@@ -244,78 +243,17 @@ class EpomakerController(ControllerBase):
             )
         )
 
-    def _find_device_path(self) -> Optional[bytes]:
-        """Finds the device path with the specified interface number.
-
-        Returns:
-            Optional[bytes]: The device path if found, None otherwise.
-        """
-        input_dir = "/sys/class/input"
-        hid_infos = EpomakerController._get_hid_infos(
-            input_dir, self.config.device_description
-        )
-
-        if not hid_infos:
-            Logger.log_warning(f"No events found with description: '{self.config.device_description}'")
-            return None
-
-        EpomakerController._populate_hid_paths(hid_infos)
-
-        return self._select_device_path(hid_infos)
-
-    @staticmethod
-    def _get_hid_infos(input_dir: str, description: str) -> list[HIDInfo]:
-        """Retrieve HID information based on the given description."""
-        hid_infos = []
-        for event in os.listdir(input_dir):
-            if event.startswith("event"):
-                device_name_path = os.path.join(input_dir, event, "device", "name")
-                try:
-                    with open(device_name_path, "r", encoding="utf-8") as f:
-                        device_name = f.read().strip()
-                        if re.search(description, device_name):
-                            event_path = os.path.join(input_dir, event)
-                            hid_infos.append(
-                                HIDInfo(device_name, event_path)
-                            )
-                except FileNotFoundError:
-                    continue
-        return hid_infos
-
-    @staticmethod
-    def _populate_hid_paths(hid_infos: list[HIDInfo]) -> None:
-        """Populate the HID paths for each HIDInfo object in the list."""
-        for hi in hid_infos:
-            device_symlink = os.path.join(hi.event_path, "device")
-            if not os.path.islink(device_symlink):
-                Logger.log_warning(f"No 'device' symlink found in {hi.event_path}")
-                continue
-
-            hid_device_path = os.path.realpath(device_symlink)
-            match = re.search(r"\b\d+-[\d.]+:\d+\.\d+\b", hid_device_path)
-            hi.hid_path = match.group(0) if match else None
-
-    def _select_device_path(self, hid_infos: list[HIDInfo]) -> Optional[bytes]:
-        """Select the appropriate device path based on interface preference."""
-        device_name_filter = "Wireless" if self.config.use_wireless else "Wired"
-        filtered_devices = [h for h in hid_infos if device_name_filter in h.device_name]
-
-        if not filtered_devices:
-            Logger.log_warning(f"Could not find {device_name_filter} interface")
-            return None
-
-        selected_device = filtered_devices[0]
-        return (
-            selected_device.hid_path.encode("utf-8")
-            if selected_device.hid_path
-            else None
-        )
-
-    def _send_command(self, command: EpomakerCommand.EpomakerCommand) -> None:
+    def _send_command(
+        self, command: EpomakerCommand.EpomakerCommand, sleep_time: float = 1 / 1000,
+        poll_first: bool = False
+    ) -> None:
         """Sends a command to the HID device.
 
         Args:
             command (EpomakerCommand): The command to send.
+            sleep_time (float): The time to sleep between sending packets
+                (default: 0.1).
+            poll_first(bool): Whether or not to poll the device first
         """
         # Make sure device is opened and connected
         if not self.device:
@@ -334,11 +272,13 @@ class EpomakerController(ControllerBase):
             assert len(packet) == BUFF_LENGTH
             if self.dry_run:
                 Logger.log_info(f"Dry run: skipping command send: {packet!r}")
-            else:
+            elif self.device:
+                if poll_first:
+                    self.poll()
                 # We need to give some time for the screen to process out report
                 # Otherwise it will hang processing queue
                 # Not the best way to do it tho, but at least it works...
-                with TimeHelper(min_duration=EpomakerController.COMMAND_MIN_DELAY):
+                with TimeHelper(min_duration=sleep_time):
                     self.device.send_feature_report(packet.get_all_bytes())
 
     @staticmethod
@@ -355,6 +295,23 @@ class EpomakerController(ControllerBase):
         if not r:
             r = range(0, 100)  # 0 to 99
         return value in r
+
+    @staticmethod
+    def __check_whistle_response(response: bytes):
+        return "01010168" in response.hex()
+
+    def send_wireless_init(self) -> bool:
+        """
+        Sends wireless init command to the HID device. Required before 2.4GHz mode usage
+        """
+
+        if self.__check_whistle_response(bytes(self.poll())):
+            return True
+
+        command = EpomakerWirelessInitCommand()
+        command.prepare_from_sequence()
+        self._send_command(command, poll_first=True)
+        return self.__check_whistle_response(bytes(self.poll()))
 
     def send_image(self, image_path: str) -> None:
         """Sends an image to the HID device.
@@ -474,6 +431,11 @@ class EpomakerController(ControllerBase):
             )
             time.sleep(sleep_seconds)
             counter += 1
+
+    def poll(self) -> Any:
+        poll_command = EpomakerPollCommand.EpomakerPollCommand()
+        self._send_command(poll_command, poll_first=False)
+        return self.device.get_feature_report(0x00, 128)
 
     def set_profile(self, profile: Profile) -> None:
         """Set the keyboard profile."""
