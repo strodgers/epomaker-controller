@@ -10,6 +10,7 @@ repository = "https://github.com/strodgers/EpomakerController"
 documentation = "https://EpomakerController.readthedocs.io"
 
 include = [
+    "src/epomakercontroller/configs/default.json",
     "src/epomakercontroller/configs/layouts/*.json",
     "src/epomakercontroller/configs/keymaps/*.json",
 ]

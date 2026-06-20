@@ -65,9 +65,7 @@ class Config:
 
 
 def get_main_config_directory() -> Path:
-    home_dir = Path(os.path.abspath(os.curdir))
-    config_dir = home_dir / CONFIG_DIRECTORY
-    return config_dir
+    return Path.home() / CONFIG_DIRECTORY
 
 
 def create_default_main_config(config_file: Path) -> None:

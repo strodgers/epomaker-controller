@@ -99,20 +99,20 @@ useful to display the temperature of some device on the host machine. You will n
 the label used by a sensor on your machine, which you can do by:
 ```console
 $ epomakercontroller list-temp-devices
-DEVICE KEY                       CURRENT TEMPERATURE
-acpitz-0                         40.0°C
-nvme-0                           30.85°C
-nvme-1                           35.85°C
-nvme-2                           59.85°C
-nvme-3                           30.85°C
-pch_skylake-0                    35.0°C
-coretemp-0                       52.0°C
-coretemp-1                       52.0°C
-coretemp-2                       44.0°C
-coretemp-3                       47.0°C
-coretemp-4                       45.0°C
-iwlwifi_1-0                      30.0°C
-NVIDIA-GeForce-MX150-0           36°C
+DEVICE KEY              CURRENT TEMPERATURE  AUTO
+acpitz-0                40.0°C
+nvme-0                  30.85°C
+nvme-1                  35.85°C
+nvme-2                  59.85°C
+nvme-3                  30.85°C
+pch_skylake-0           35.0°C
+coretemp-0              52.0°C               *
+coretemp-1              52.0°C
+coretemp-2              44.0°C
+coretemp-3              47.0°C
+coretemp-4              45.0°C
+iwlwifi_1-0             30.0°C
+NVIDIA-GeForce-MX150-0  36°C
 ```
 
 Note that an `NVIDIA` device is also listed here, which requires having NVIDIA drivers installed (eg
@@ -122,6 +122,13 @@ Then you can start the daemon with the corresponding label, eg:
 ```console
 epomakercontroller start-daemon coretemp-0
 ```
+
+You can also let the daemon select a temperature sensor automatically:
+```console
+epomakercontroller start-daemon --auto-temp
+```
+Automatic selection prefers CPU/SoC sensors, then other non-GPU sensors, and only falls back to GPU
+sensors if no other temperature sensors are available.
 
 Alternatively leave the label blank to disable and only do CPU usage:
 ```console

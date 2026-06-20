@@ -28,14 +28,17 @@ Data report header (8 bytes):
   [7]     checksum
   [8-63]  56 bytes        Pixel data (RGB565)
 """
+from __future__ import annotations
 
 import math
 import os
-from typing import override
+from typing import TYPE_CHECKING, override
 
 import cv2
 import numpy as np
-from PIL import Image
+
+if TYPE_CHECKING:
+    from PIL import Image
 
 from .EpomakerCommand import EpomakerCommand, CommandStructure, EpomakerStreamedCommand, IEpomakerCommand
 from .data.constants import IMAGE_DIMENSIONS
@@ -127,7 +130,12 @@ class EpomakerGifCommand(EpomakerStreamedCommand):
             return None, None, None
 
         try:
-            gif = Image.open(gif_path)
+            from PIL import Image as PILImage
+
+            gif = PILImage.open(gif_path)
+        except ImportError:
+            Logger.log_error("GIF upload requires Pillow: install python-pillow or Pillow")
+            return None, None, None
         except Exception as e:
             Logger.log_error(f"Failed to open GIF: {e}")
             return None, None, None
@@ -218,7 +226,9 @@ class EpomakerGifCommand(EpomakerStreamedCommand):
         """
         step = self.step
 
-        canvas = Image.new("RGBA", gif.size, (0, 0, 0, 255))
+        from PIL import Image as PILImage
+
+        canvas = PILImage.new("RGBA", gif.size, (0, 0, 0, 255))
         frames: list[Image.Image] = []
 
         for i in range(self.n_frames):
@@ -230,7 +240,7 @@ class EpomakerGifCommand(EpomakerStreamedCommand):
 
             disposal = gif.disposal_method if hasattr(gif, 'disposal_method') else 0
             if disposal == 2:
-                canvas = Image.new("RGBA", gif.size, (0, 0, 0, 255))
+                canvas = PILImage.new("RGBA", gif.size, (0, 0, 0, 255))
 
         return frames
 

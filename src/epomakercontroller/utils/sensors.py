@@ -5,6 +5,21 @@ from pynvml import NVMLError
 
 from epomakercontroller.logger.logger import Logger
 
+CPU_SENSOR_PREFIXES = (
+    "coretemp",
+    "k10temp",
+    "zenpower",
+    "cpu_thermal",
+    "soc_thermal",
+    "acpitz",
+)
+GPU_SENSOR_MARKERS = (
+    "nvidia",
+    "geforce",
+    "radeon",
+    "amdgpu",
+)
+
 
 def get_cpu_usage(test_mode: bool = False) -> int:
     """Get the current CPU usage.
@@ -52,6 +67,35 @@ def get_device_temp(temp_key: str, test_mode: bool = False) -> int:
     return 0
 
 
+def select_temp_device(temps: dict[str, float] | None = None) -> str | None:
+    """Select a sensible default temperature sensor from available devices.
+
+    Prefer CPU/SoC sensors and avoid GPU sensors by default. GPU queries can be
+    comparatively expensive or disruptive on some systems, so automatic daemon
+    mode should choose them only when no better sensor is available.
+    """
+    if temps is None:
+        temps = _get_temp_devices()
+
+    if not temps:
+        return None
+
+    def sensor_rank(item: tuple[str, float]) -> tuple[int, float, str]:
+        key, temp = item
+        key_lower = key.lower()
+
+        if any(key_lower.startswith(prefix) for prefix in CPU_SENSOR_PREFIXES):
+            priority = 0
+        elif any(marker in key_lower for marker in GPU_SENSOR_MARKERS):
+            priority = 2
+        else:
+            priority = 1
+
+        return priority, -float(temp), key
+
+    return min(temps.items(), key=sensor_rank)[0]
+
+
 def _get_temp_devices() -> dict[str, float] | None:
     try:
         hw_temperatures = psutil.sensors_temperatures()
@@ -93,12 +137,12 @@ def print_temp_devices() -> None:
         Logger.log_error("No temperature sensors found.")
         return
 
-    format_whitespace = len(max(temps.keys(), key=len)) + 10
+    selected_key = select_temp_device(temps)
+    key_width = len(max(temps.keys(), key=len))
     # pylint: disable=bad-builtin
-    print(
-        f"DEVICE KEY:{format_whitespace} CURRENT TEMPERATURE"
-    )
+    print(f"{'DEVICE KEY':<{key_width}}  CURRENT TEMPERATURE  AUTO")
 
     for device_key, temp in temps.items():
+        auto_marker = "*" if device_key == selected_key else ""
         # pylint: disable=bad-builtin
-        print(f"{device_key}:{format_whitespace} {temp}°C")
+        print(f"{device_key:<{key_width}}  {temp}°C  {auto_marker}")

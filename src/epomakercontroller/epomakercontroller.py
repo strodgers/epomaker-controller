@@ -20,7 +20,7 @@ import hid  # type: ignore[import-not-found]
 from .commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
 from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
-from .utils.sensors import get_cpu_usage, get_device_temp
+from .utils.sensors import get_cpu_usage, get_device_temp, select_temp_device
 from .utils.time_helper import TimeHelper
 from .utils.keyboard_keys import KeyboardKeys
 
@@ -76,6 +76,9 @@ class HIDInfo:
 
 class EpomakerController(ControllerBase):
     COMMAND_MIN_DELAY = 1 / 1000  # ms.
+    VENDOR_USAGE_PAGE = 0xFFFF
+    SCREEN_USAGE = 2
+    SCREEN_INTERFACE_NUMBER = 2
 
     """EpomakerController class represents a controller for an Epomaker USB HID device.
 
@@ -177,7 +180,12 @@ class EpomakerController(ControllerBase):
             product_id (int): The product ID.
         """
         try:
-            self.device.open(self.config.vendor_id, product_id)
+            device_path = self._find_device_path()
+
+            if device_path:
+                self.device.open_path(device_path)
+            else:
+                self.device.open(self.config.vendor_id, product_id)
         except IOError as e:
             Logger.log_error(
                 f"Failed to open device: {e}\n"
@@ -187,6 +195,25 @@ class EpomakerController(ControllerBase):
                 "set up a udev rule to allow access to the device.\n\n"
             )
             self.device = None
+
+    def _find_device_path(self) -> Optional[bytes]:
+        """Find the HID endpoint used for screen/control reports."""
+        for device in self.device_list:
+            if (
+                device.get("usage_page") == self.VENDOR_USAGE_PAGE
+                and device.get("usage") == self.SCREEN_USAGE
+                and device.get("path")
+            ):
+                return device["path"]
+
+        for device in self.device_list:
+            if (
+                device.get("interface_number") == self.SCREEN_INTERFACE_NUMBER
+                and device.get("path")
+            ):
+                return device["path"]
+
+        return None
 
     def generate_udev_rule(self) -> None:
         """Generates udev rule for the connected keyboard."""
@@ -447,13 +474,26 @@ class EpomakerController(ControllerBase):
         profile_command = EpomakerProfileCommand.EpomakerProfileCommand(profile)
         self._send_command(profile_command)
 
-    def start_daemon(self, temp_key: str | None, test_mode: bool) -> None:
+    def start_daemon(
+        self,
+        temp_key: str | None,
+        test_mode: bool,
+        auto_temp: bool = False,
+    ) -> None:
         """Start a daemon to update the CPU usage and optionally a temperature.
 
         Args:
             temp_key (str): A label corresponding to the device to monitor.
             test_mode (bool): Send random ints instead of real values.
+            auto_temp (bool): Automatically select a temperature sensor.
         """
+        if auto_temp and not temp_key:
+            temp_key = select_temp_device()
+            if temp_key:
+                Logger.log_info(f"Automatically selected temperature sensor: {temp_key}")
+            else:
+                Logger.log_warning("No temperature sensors found; running CPU-only daemon")
+
         # Set current time and date
         self.send_time()
 

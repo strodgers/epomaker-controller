@@ -145,17 +145,28 @@ def send_cpu(controller: EpomakerController, cpu: int) -> None:
     is_flag=True,
     help="Start daemon in test mode, sending random data.",
 )
+@click.option(
+    "--auto-temp",
+    is_flag=True,
+    help="Automatically select a temperature sensor.",
+)
 @click.argument("temp_key", type=str, required=False)
 @wrapped_command
-def start_daemon(controller: EpomakerController, temp_key: str | None, test_mode: bool) -> None:
+def start_daemon(
+    controller: EpomakerController,
+    temp_key: str | None,
+    test_mode: bool,
+    auto_temp: bool,
+) -> None:
     """Start a daemon to update the CPU usage and optionally a temperature.
 
     Args:
         controller (EpomakerController): Passed from wrapped_command() decorator
         temp_key (str): A label corresponding to the device to monitor.
         test_mode (bool): Send random ints instead of real values.
+        auto_temp (bool): Automatically select a temperature sensor.
     """
-    controller.start_daemon(temp_key, test_mode)
+    controller.start_daemon(temp_key, test_mode, auto_temp)
 
 
 @cli.command()
