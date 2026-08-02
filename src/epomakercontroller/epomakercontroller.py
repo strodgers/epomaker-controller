@@ -204,6 +204,7 @@ class EpomakerController(ControllerBase):
 
         # Write the rule to a temporary file
         temp_file_path = TMP_FILE_PATH
+        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
 
         with open(temp_file_path, "w", encoding="utf-8") as temp_file:
             temp_file.write(rule_content)
