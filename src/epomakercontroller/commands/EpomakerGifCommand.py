@@ -45,6 +45,11 @@ from .utils import image_utils
 from ..logger.logger import Logger
 
 
+ALIGNMENT = 64
+"""Frame dimensions must be multiples of this; the firmware's animation
+framebuffer is 4K page-aligned and unaligned sizes produce line artifacts."""
+
+
 class EpomakerGifCommand(EpomakerStreamedCommand):
     """A command for sending animated GIFs natively to the keyboard."""
 
@@ -71,7 +76,16 @@ class EpomakerGifCommand(EpomakerStreamedCommand):
         source_width = math.ceil(source_width * compress_ratio)
         source_height = math.ceil(source_height * compress_ratio)
 
-        return math.floor(source_width / 64) * 64, math.floor(source_height / 64) * 64
+        # Clamp to one alignment block. Flooring alone drives the short axis of
+        # a wide or tall source to zero (a 800x200 GIF fits to 162x41, and
+        # floor(41 / 64) * 64 == 0). Zero then satisfies the
+        # `per_frame_size % 4096` check in __init__, because 0 % 4096 == 0, so
+        # the upload proceeds and sends an empty frame instead of raising.
+        # Any pair of multiples of 64 stays 4K-aligned: 64a * 64b * 2 == 8192ab.
+        return (
+            max(ALIGNMENT, math.floor(source_width / ALIGNMENT) * ALIGNMENT),
+            max(ALIGNMENT, math.floor(source_height / ALIGNMENT) * ALIGNMENT),
+        )
 
     def __init__(self, gif_path: str) -> None:
         prepared_data = self.prepare_gif(gif_path)
