@@ -10,6 +10,7 @@
         16406
     ],
     "USE_WIRELESS": false,
+    "INTERFACE": 1,
     "DEVICE_DESCRIPTION_REGEX": "ROYUAN .* System Control",
     "CONF_LAYOUT_PATH": "EpomakerRT100-UK-ISO.json",
     "CONF_KEYMAP_PATH": "EpomakerRT100.json"
