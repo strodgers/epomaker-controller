@@ -58,6 +58,10 @@ class EpomakerConfig:
 
         self.vendor_id = config_main["VENDOR_ID"]
         self.use_wireless = config_main["USE_WIRELESS"]
+        # Which HID interface to open. None falls back to opening by
+        # vendor/product id, which takes whichever the backend enumerates
+        # first -- on Windows that is the only option available.
+        self.interface: Optional[int] = config_main["INTERFACE"]
 
         self.product_ids: list[int] = (
             config_main["PRODUCT_IDS_WIRED"]
@@ -170,6 +174,26 @@ class EpomakerController(ControllerBase):
 
         return None
 
+    def _find_interface_path(self, product_id: int) -> Optional[bytes]:
+        """Path of the configured HID interface, or None to open by id.
+
+        Returns None when no interface is configured, or when the backend does
+        not report interface numbers -- notably on Windows, where hidapi
+        reports -1 and opening by vendor/product id is the only option.
+        """
+        if self.config.interface is None:
+            return None
+
+        for entry in hid.enumerate(self.config.vendor_id, product_id):
+            if entry.get("interface_number") == self.config.interface:
+                return entry["path"]
+
+        Logger.log_warning(
+            f"Interface {self.config.interface} not found on device "
+            f"{self.config.vendor_id:04x}:{product_id:04x}, opening by id instead"
+        )
+        return None
+
     def _open_device(self, product_id: int) -> None:
         """Opens the USB HID device.
 
@@ -177,7 +201,11 @@ class EpomakerController(ControllerBase):
             product_id (int): The product ID.
         """
         try:
-            self.device.open(self.config.vendor_id, product_id)
+            path = self._find_interface_path(product_id)
+            if path is not None:
+                self.device.open_path(path)
+            else:
+                self.device.open(self.config.vendor_id, product_id)
         except IOError as e:
             Logger.log_error(
                 f"Failed to open device: {e}\n"

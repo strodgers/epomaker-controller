@@ -34,8 +34,17 @@ def wrapped_command(func):
 
 @click.group()
 @click.version_option(retrieve_app_version(), prog_name="EpomakerController")
-def cli() -> None:
+@click.option(
+    "--interface",
+    type=int,
+    default=None,
+    help="HID interface to open, overriding INTERFACE in config.json. "
+         "Try another value if the keyboard misbehaves while a command runs.",
+)
+def cli(interface: int | None) -> None:
     """A simple CLI for the EpomakerController."""
+    if interface is not None:
+        CONFIG_MAIN.data["INTERFACE"] = interface
 
 
 @cli.command()
