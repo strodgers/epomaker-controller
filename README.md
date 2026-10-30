@@ -87,11 +87,14 @@ You can click on various keys, then press 'Enter' on your keyboard to select a c
 
 ### Permissions
 In order to communicate with your keyboard without having to use sudo, you can
-use the tool to generate a udev rule for the connected RT100:
-```console
-epomakercontroller dev --udev
-```
-You will need to enter your password when prompted.
+use the tool to install a udev rule. It gives the user logged in at the machine
+access to the configured keyboards (wired and 2.4GHz):
+
+    epomakercontroller dev --udev
+
+You will need to enter your password when prompted. Unplug and reconnect the
+keyboard afterwards. Older versions installed `/etc/udev/rules.d/99-epomaker-rt100.rules`,
+which gave every user on the machine access; it is removed.
 
 ### CPU/Temperature display
 The temperature on the Epomaker screen is supposed to be for the weather, but I thought it was more

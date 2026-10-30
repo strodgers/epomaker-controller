@@ -10,6 +10,7 @@ import dataclasses
 import os
 import time
 import subprocess
+import tempfile
 
 from typing import override
 from datetime import datetime
@@ -18,7 +19,7 @@ from json import dumps
 import hid  # type: ignore[import-not-found]
 
 from .commands.EpomakerWirelessInitCommand import EpomakerWirelessInitCommand
-from .configs.constants import TMP_FILE_PATH, RULE_FILE_PATH
+from .configs.constants import OLD_RULE_FILE_PATH, RULE_FILE_PATH
 from .logger.logger import Logger
 from .utils.sensors import get_cpu_usage, get_device_temp
 from .utils.time_helper import TimeHelper
@@ -63,6 +64,9 @@ class EpomakerConfig:
             config_main["PRODUCT_IDS_WIRED"]
             if not self.use_wireless
             else config_main["PRODUCT_IDS_24G"]
+        )
+        self.all_products_ids: list[int] = (
+            config_main["PRODUCT_IDS_WIRED"] + config_main["PRODUCT_IDS_24G"]
         )
         self.device_description = config_main["DEVICE_DESCRIPTION_REGEX"]
 
@@ -188,42 +192,48 @@ class EpomakerController(ControllerBase):
             )
             self.device = None
 
-    def generate_udev_rule(self) -> None:
-        """Generates udev rule for the connected keyboard."""
-        rule_content = (
-            f"# Epomaker RT100 keyboard\n"
-            f'SUBSYSTEM=="usb", ATTRS{{idVendor}}=="{self.config.vendor_id:04x}", '
-            f'ATTRS{{idProduct}}=="{self._find_product_id():04x}", MODE="0666", '
-            'GROUP="plugdev"\n\n'
+    def udev_rule(self) -> str:
+        """The udev rule for every configured keyboard, wired or 2.4GHz.
+
+        Returns:
+            str: The rule file content.
+        """
+
+        product_ids = "|".join(f"{pid:04x}" for pid in self.config.all_products_ids)
+        return(
+            "# Epomaker keyboards: access for the user at the machine (logind uaccess)\n"
+            'SUBSYSTEM=="usb", ENV{DEVTYPE}=="usb_device", '
+            f'ATTRS{{idVendor}}=="{self.config.vendor_id:04x}", '
+            f'ATTRS{{idProduct}}=="{product_ids}", '
+            'MODE="0660", TAG+="uaccess"\n'
         )
 
-        Logger.log_info("Generating udev rule for Epomaker RT100 keyboard")
+    def generate_udev_rule(self) -> None:
+        """Installs the udev rule, owned by root, and applies it."""
+        rule_content = self.udev_rule()
+        Logger.log_info("Generating udev rule for Epomaker keyboards")
         Logger.log_info(f"Rule content:\n{rule_content}")
         Logger.log_info(f"Rule file path: {RULE_FILE_PATH}")
         Logger.log_info("Please enter your password if prompted")
 
-        # Write the rule to a temporary file
-        temp_file_path = TMP_FILE_PATH
-        os.makedirs(os.path.dirname(temp_file_path), exist_ok=True)
-
-        with open(temp_file_path, "w", encoding="utf-8") as temp_file:
+        fd, temp_file_path = tempfile.mkstemp(suffix=".rules")
+        with os.fdopen(fd, "w", encoding="utf-8") as temp_file:
             temp_file.write(rule_content)
 
-        # Move the file to the correct location, reload rules
-
-        move_command = ["mv", temp_file_path, RULE_FILE_PATH]
-        reload_command = ["udevadm", "control", "--reload-rules"]
-        trigger_command = ["udevadm", "trigger"]
-
-        if os.geteuid() != 0:
-            # Use sudo if not root
-            move_command = ["sudo"] + move_command
-            reload_command = ["sudo"] + reload_command
-            trigger_command = ["sudo"] + trigger_command
-
-        subprocess.run(move_command, check=True)
-        subprocess.run(reload_command, check=True)
-        subprocess.run(trigger_command, check=True)
+        sudo = [] if os.geteuid() == 0 else ["sudo"]
+        commands = [
+            ["install", "-o", "root", "-g", "root", "-m", "0644",
+             temp_file_path, RULE_FILE_PATH],
+            ["rm", "-f", OLD_RULE_FILE_PATH],
+            ["udevadm", "control", "--reload-rules"],
+            ["udevadm", "trigger", "--action=add", "--subsystem-match=usb",
+             f"--attr-match=idVendor={self.config.vendor_id:04x}"],
+        ]
+        try:
+            for command in commands:
+                subprocess.run(sudo + command, check=True)
+        finally:
+            os.remove(temp_file_path)
 
         Logger.log_info("Rule generated successfully")
 

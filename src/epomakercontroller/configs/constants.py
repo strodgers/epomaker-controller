@@ -40,8 +40,10 @@ if os.name == "nt":
     if not os.path.exists(ETC_FOLDER):
         os.mkdir(ETC_FOLDER)
 
-RULE_FILE_PATH = ETC_FOLDER + "/udev/rules.d/99-epomaker-rt100.rules"
-TMP_FILE_PATH = TMP_FOLDER + "/99-epomaker-rt100.rules"
+# "uaccess" is applied by 73-seat-late.rules, so the rule must be before it
+RULE_FILE_PATH = ETC_FOLDER + "/udev/rules.d/70-epomaker-controller.rules"
+OLD_RULE_FILE_PATH = ETC_FOLDER + "/udev/rules.d/99-epomaker-rt100.rules"
+
 PATH_TO_DEFAULT_CONFIG = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), "default.json"
 )

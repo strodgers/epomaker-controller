@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Apply epomaker udev rules if necessary
-if [ ! -f /etc/udev/rules.d/99-epomaker-rt100.rules ]; then
+if [ ! -f /etc/udev/rules.d/70-epomaker-controller.rules ]; then
     epomakercontroller dev --udev >/dev/null 2>&1
 fi
 
