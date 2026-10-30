@@ -96,6 +96,8 @@ You will need to enter your password when prompted. Unplug and reconnect the
 keyboard afterwards. Older versions installed `/etc/udev/rules.d/99-epomaker-rt100.rules`,
 which gave every user on the machine access; it is removed.
 
+Setups without a local login (headless, ssh only) no longer get access by default; they can add their own rule with a group of their choice.
+
 ### CPU/Temperature display
 The temperature on the Epomaker screen is supposed to be for the weather, but I thought it was more
 useful to display the temperature of some device on the host machine. You will need to find out
